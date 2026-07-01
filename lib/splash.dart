@@ -1,7 +1,8 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:sustainable/screen/loginpage.dart';
+
+import 'package:sustainable/welcome.dart';
 
 void main() {
 runApp(const EZApp());
@@ -45,7 +46,7 @@ Future.delayed(const Duration(seconds: 4), () {
 if (mounted) {
 Navigator.pushReplacement(
 context,
-MaterialPageRoute(builder: (context) => const LoginScreen()),
+MaterialPageRoute(builder: (context) => WelcomeScreen()),
 );
 }
 });
