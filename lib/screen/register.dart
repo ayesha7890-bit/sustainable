@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:sustainable/screen/register.dart';
+import 'package:sustainable/screen/loginpage.dart';
 
-
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _RegisterScreenState extends State<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
 
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+  TextEditingController();
 
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   late final AnimationController _controller;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
 
-  // Splash / Welcome / Register theme colors
+  // Splash / Welcome theme colors
   static const Color forest = Color(0xFF2F4A3E);
   static const Color sage = Color(0xFF5E8570);
   static const Color sand = Color(0xFFCBBE9C);
@@ -32,30 +37,37 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     )..forward();
+
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
+  void _handleRegister() {
     if (_formKey.currentState!.validate()) {
-      // TODO: Query SQLite `users` table by email + password.
-      // Check the `role` column:
-      //   role == 'admin' -> Navigator.pushReplacement(AdminDashboardScreen())
-      //   role == 'user'  -> Navigator.pushReplacement(HomeScreen())
-      // Placeholder navigation below — replace with real role check.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login logic goes here (role check)")),
+      // TODO: Insert into SQLite `users` table with role = 'user' (default)
+      // then navigate to InterestsScreen for a new signup.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
     }
   }
 
-  // Staggered fade + slide entrance, same pattern as RegisterScreen
+  // Staggered delay helper — makes each field fade/slide in slightly
+  // after the previous one for a smooth cascading entrance.
   Widget _staggered(int index, Widget child) {
     final start = (index * 0.08).clamp(0.0, 0.6);
     final anim = CurvedAnimation(
@@ -80,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: forest,
       body: Stack(
         children: [
-          // Background gradient — matches splash / welcome / register theme
+          // Background gradient — matches splash_screen.dart theme
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -102,30 +114,44 @@ class _LoginScreenState extends State<LoginScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 12),
 
+                    // Back button
                     _staggered(
                       0,
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.eco_rounded,
-                              color: Colors.white, size: 36),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white, size: 20),
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                          Colors.white.withValues(alpha: 0.12),
+                          padding: const EdgeInsets.all(10),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 24),
+
+                    _staggered(
+                      1,
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.eco_rounded,
+                            color: Colors.white, size: 30),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
 
                     _staggered(
                       1,
                       const Text(
-                        "Welcome back",
-                        textAlign: TextAlign.center,
+                        "Create your account",
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -137,8 +163,7 @@ class _LoginScreenState extends State<LoginScreen>
                     _staggered(
                       1,
                       Text(
-                        "Log in to continue your sustainable living journey.",
-                        textAlign: TextAlign.center,
+                        "Join EcoTrack and start your sustainable living journey.",
                         style: TextStyle(
                           fontSize: 13.5,
                           color: Colors.white.withValues(alpha: 0.8),
@@ -147,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 32),
 
                     // Glass card containing the form fields
                     _staggered(
@@ -165,6 +190,15 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         child: Column(
                           children: [
+                            _buildField(
+                              controller: _nameController,
+                              label: "Full name",
+                              icon: Icons.person_outline_rounded,
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? "Enter your full name"
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
                             _buildField(
                               controller: _emailController,
                               label: "Email",
@@ -201,33 +235,38 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               validator: (v) {
                                 if (v == null || v.isEmpty) {
-                                  return "Enter your password";
+                                  return "Enter a password";
+                                }
+                                if (v.length < 6) {
+                                  return "At least 6 characters";
                                 }
                                 return null;
                               },
                             ),
-
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {
-                                  // TODO: Forgot password flow
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: const Size(0, 32),
-                                  tapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
+                            const SizedBox(height: 16),
+                            _buildField(
+                              controller: _confirmPasswordController,
+                              label: "Confirm password",
+                              icon: Icons.lock_outline_rounded,
+                              obscureText: _obscureConfirmPassword,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureConfirmPassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  size: 20,
                                 ),
-                                child: Text(
-                                  "Forgot password?",
-                                  style: TextStyle(
-                                    color: sand,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                                onPressed: () => setState(() =>
+                                _obscureConfirmPassword =
+                                !_obscureConfirmPassword),
                               ),
+                              validator: (v) {
+                                if (v != _passwordController.text) {
+                                  return "Passwords do not match";
+                                }
+                                return null;
+                              },
                             ),
                           ],
                         ),
@@ -236,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                     const SizedBox(height: 28),
 
-                    _staggered(3, _AnimatedLoginButton(onTap: _handleLogin)),
+                    _staggered(3, _AnimatedSignUpButton(onTap: _handleRegister)),
 
                     const SizedBox(height: 20),
 
@@ -246,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Don't have an account? ",
+                            "Already have an account? ",
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.65),
                               fontSize: 13.5,
@@ -257,12 +296,11 @@ class _LoginScreenState extends State<LoginScreen>
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) =>
-                                    const RegisterScreen()),
+                                    builder: (context) => const LoginScreen()),
                               );
                             },
                             child: const Text(
-                              "Sign up",
+                              "Log in",
                               style: TextStyle(
                                 color: Color(0xFFC5E1A5),
                                 fontSize: 13.5,
@@ -333,18 +371,18 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-// ANIMATED LOGIN BUTTON — same press/scale interaction + gradient theme
-// as the "Get Started" / "Sign up" buttons on the other screens.
-class _AnimatedLoginButton extends StatefulWidget {
+// ANIMATED SIGN UP BUTTON — same press/scale interaction + gradient
+// theme as the "Get Started" button on the welcome screen.
+class _AnimatedSignUpButton extends StatefulWidget {
   final VoidCallback onTap;
 
-  const _AnimatedLoginButton({required this.onTap});
+  const _AnimatedSignUpButton({required this.onTap});
 
   @override
-  State<_AnimatedLoginButton> createState() => _AnimatedLoginButtonState();
+  State<_AnimatedSignUpButton> createState() => _AnimatedSignUpButtonState();
 }
 
-class _AnimatedLoginButtonState extends State<_AnimatedLoginButton>
+class _AnimatedSignUpButtonState extends State<_AnimatedSignUpButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
@@ -397,8 +435,8 @@ class _AnimatedLoginButtonState extends State<_AnimatedLoginButton>
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                _LoginScreenState.forest,
-                _LoginScreenState.sage,
+                _RegisterScreenState.forest,
+                _RegisterScreenState.sage,
               ],
             ),
             borderRadius: BorderRadius.circular(28),
@@ -414,7 +452,7 @@ class _AnimatedLoginButtonState extends State<_AnimatedLoginButton>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Log in',
+                'Sign up',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,

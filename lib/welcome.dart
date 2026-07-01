@@ -1,6 +1,7 @@
+import 'dart:ui'; // ImageFilter ke liye zaroori hai
 import 'package:flutter/material.dart';
-// Aapki login screen ka import statement
 import 'package:sustainable/screen/loginpage.dart';
+import 'package:sustainable/screen/register.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -8,113 +9,151 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      // Image ke asli background green color se match kiya hai taake picture original lage
+      backgroundColor: const Color(0xFF2F4A3E),
       body: Stack(
         children: [
-          Column(
-            children: [
-              // 1. TOP IMAGE: Picture ko niche shift kiya hai
-              Expanded(
-                flex: 7,
-                child: ClipPath(
-                  clipper: _BottomCurveClipper(),
+          // 1. BACKGROUND IMAGE (Bina khinche)
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/img.png'),
+                fit: BoxFit.cover, // Isse image khinchegi nahi aur quality kharab nahi hogi
+                alignment: Alignment(0.0, -0.35), // Image ko thoda upar shift kiya taake earth aur sprout dono perfectly center mein aayin
+              ),
+            ),
+          ),
+
+          // 1b. DARK SCRIM OVERLAY — image ki brightness kam karne ke liye
+          // (top halka, bottom zyada dark taake glass card ka text aur zyada readable ho)
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF0D2318).withValues(alpha: 0.30),
+                  const Color(0xFF0D2318).withValues(alpha: 0.15),
+                  const Color(0xFF0D2318).withValues(alpha: 0.55),
+                ],
+                stops: const [0.0, 0.45, 1.0],
+              ),
+            ),
+          ),
+
+          // 2. FLOATING GLASS CARD (WITH PERFECT OPACITY & BLUR)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 24.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0), // High quality blur
                   child: Container(
                     width: double.infinity,
-                    color: const Color(0xFF7CB342), // Image ke piche ka green background color match kiya hai
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 40), // Top se thoda niche push kiya taake text pura dikhe
-                      decoration: const BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage('assets/img.png'),
-                          fit: BoxFit.contain, // Isse aapki puri picture (earth + text) bina cut huay fit aayegi
-                          alignment: Alignment.center, // Center ya bottomCenter par rakh kar check karein
-                        ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+                    decoration: BoxDecoration(
+                      // Glass transparency thodi dark rakhi hai taake piche ki lines text ko kharab na karein
+                      color: const Color(0xFF0D2318).withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        width: 1.5,
                       ),
                     ),
-                  ),
-                ),
-              ),
-
-              // 2. BOTTOM DETAILS: Text aur Button area
-              Expanded(
-                flex: 3,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 8.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "Track Your Sustainable Living",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                          letterSpacing: 0.3,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Pill handle top par
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        "Manually add details or connect your smart home devices - we'll show how much carbon your home uses.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[700],
-                          height: 1.4,
-                        ),
-                      ),
-                      const Spacer(),
+                        const SizedBox(height: 24),
 
-                      // Premium Rounded Green Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: () {
+                        // Main Title
+                        const Text(
+                          "Track Your Sustainable Living",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Subtitle Description
+                        Text(
+                          "Manually add details or connect your smart home devices - we'll show how much carbon your home uses.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Premium Animated Get Started Button (splash gradient colors)
+                        _AnimatedGetStartedButton(
+                          onTap: () {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
+                                builder: (context) => const RegisterScreen(),
                               ),
                             );
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0C8346),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            elevation: 2,
-                          ),
-                          child: const Text(
-                            'Get Started',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+                        const SizedBox(height: 20),
 
-          // BACKGROUND DECORATION LINE
-          Positioned(
-            top: 260,
-            left: -60,
-            child: Opacity(
-              opacity: 0.15,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF0C8346), width: 1.5),
+                        // Login Section
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Already have an account? ",
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const LoginScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                "Log in",
+                                style: TextStyle(
+                                  color: Color(0xFFC5E1A5), // Perfect readable pastel green
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -125,27 +164,106 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-class _BottomCurveClipper extends CustomClipper<Path> {
+// ANIMATED "GET STARTED" BUTTON
+// Tap pe halka scale-down/up "press" feel + gradient jo splash screen
+// (main.dart) ke colors se match karta hai: forest -> sage -> sand.
+class _AnimatedGetStartedButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _AnimatedGetStartedButton({required this.onTap});
+
   @override
-  Path getClip(Size size) {
-    Path path = Path();
-    path.lineTo(0, size.height - 60);
+  State<_AnimatedGetStartedButton> createState() =>
+      _AnimatedGetStartedButtonState();
+}
 
-    var controlPoint = Offset(size.width / 2, size.height + 40);
-    var endPoint = Offset(size.width, size.height - 60);
+class _AnimatedGetStartedButtonState extends State<_AnimatedGetStartedButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
 
-    path.quadraticBezierTo(
-      controlPoint.dx,
-      controlPoint.dy,
-      endPoint.dx,
-      endPoint.dy,
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 140),
+      lowerBound: 0.0,
+      upperBound: 0.06,
     );
-
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.94).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
   }
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails details) => _controller.forward();
+
+  void _onTapUp(TapUpDetails details) {
+    _controller.reverse();
+    widget.onTap();
+  }
+
+  void _onTapCancel() => _controller.reverse();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: Container(
+          width: double.infinity,
+          height: 54,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Color(0xFF2F4A3E), // deep muted forest
+                Color(0xFF5E8570), // sage green
+              ],
+            ),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0D2318).withValues(alpha: 0.35),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Get Started',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              SizedBox(width: 8),
+              Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
