@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sustainable/admin/admindashboard.dart';
 import 'package:sustainable/screen/register.dart';
 
 
@@ -42,19 +43,58 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  void _handleLogin() {
+  void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Query SQLite `users` table by email + password.
-      // Check the `role` column:
-      //   role == 'admin' -> Navigator.pushReplacement(AdminDashboardScreen())
-      //   role == 'user'  -> Navigator.pushReplacement(HomeScreen())
-      // Placeholder navigation below — replace with real role check.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login logic goes here (role check)")),
-      );
+      String email = _emailController.text.trim();
+      String password = _passwordController.text.trim();
+
+      // 1. CHK: Kya yeh hamara SPECIFIC ADMIN hai?
+      if (email == "admin@eco.com" && password == "admin123") {
+        if (!mounted) return;
+        // Admin direct Dashboard screen par jayega
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()), // Aapke dashboard class ka jo bhi sahi naam ho
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Welcome Admin! Control Panel Opened."),
+            backgroundColor: Color(0xFF2F4A3E),
+          ),
+        );
+      }
+      // 2. AGER ADMIN NAHI HAI TOU USER HO GA (DATABASE SE CHECK KAREIN)
+      else {
+        // TODO: DatabaseHelper se password check lagane ka code (Agar setup hai)
+        // bool isUserValid = await DatabaseHelper.instance.checkUserLogin(email, password);
+
+        bool isUserValid = true; // Temporary placeholder true kiya hai jab tak aap DB call check karein
+
+        if (isUserValid) {
+          if (!mounted) return;
+          // Normal user direct apni user screen par jayega
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const Scaffold(body: Center(child: Text("User Home Screen")))),
+            // 👆 Yahan aap apni User side ki home screen ka naam (jaise const HomeScreen()) likh kar import kar lein
+          );
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Login Successful! Welcome to EcoTrack.")),
+          );
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Invalid Email or Password!"),
+              backgroundColor: Color(0xFFE57373),
+            ),
+          );
+        }
+      }
     }
   }
-
   // Staggered fade + slide entrance, same pattern as RegisterScreen
   Widget _staggered(int index, Widget child) {
     final start = (index * 0.08).clamp(0.0, 0.6);
