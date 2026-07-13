@@ -14,7 +14,7 @@ class _ManageRecipesScreenState extends State<ManageRecipesScreen>
   final _titleController = TextEditingController();
   final _ingredientsController = TextEditingController();
   final _instructionsController = TextEditingController();
-  bool _isPlantBased = true; // Default plant-based select hoga
+  bool _isPlantBased = true; // Plant-based will be selected by default
 
   List<Map<String, dynamic>> _recipes = [];
   late final AnimationController _entranceController;
@@ -35,7 +35,7 @@ class _ManageRecipesScreenState extends State<ManageRecipesScreen>
   }
 
   void _loadRecipes() async {
-    // DatabaseHelper ke naye function se data load hoga
+    // Load data using new function in DatabaseHelper
     final data = await DatabaseHelper.instance.fetchRecipes();
     setState(() {
       _recipes = data;
@@ -67,7 +67,7 @@ class _ManageRecipesScreenState extends State<ManageRecipesScreen>
   }
 
   void _saveRecipe() async {
-    // Database mein entry insert ho rahi hai
+    // Inserting entry into the database
     await DatabaseHelper.instance.insertRecipe({
       'title': _titleController.text,
       'ingredients': _ingredientsController.text,
@@ -83,12 +83,12 @@ class _ManageRecipesScreenState extends State<ManageRecipesScreen>
     });
 
     if (!mounted) return;
-    Navigator.pop(context); // Dialog band ho jayega
-    _loadRecipes(); // List live update ho jayegi
+    Navigator.pop(context); // Close the dialog
+    _loadRecipes(); // List will update live
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Sustainable Recipe kamyabi se publish ho gayi!'),
+        content: Text('Sustainable Recipe published successfully!'),
         backgroundColor: sage,
       ),
     );
@@ -244,7 +244,7 @@ class _ManageRecipesScreenState extends State<ManageRecipesScreen>
       controller: controller,
       maxLines: maxLines,
       style: const TextStyle(color: Colors.white, fontSize: 14),
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Field fill karna zaroori hai' : null,
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'This field is required' : null,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
@@ -297,7 +297,7 @@ class _ManageRecipesScreenState extends State<ManageRecipesScreen>
               ),
               Expanded(
                 child: _recipes.isEmpty
-                    ? _staggered(1, const Center(child: Text('Koi recipes add nahi hain. Nayi dish launch karein!', style: TextStyle(color: Colors.white70))))
+                    ? _staggered(1, const Center(child: Text('No recipes added yet. Launch a new dish!', style: TextStyle(color: Colors.white70))))
                     : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   itemCount: _recipes.length,

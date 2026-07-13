@@ -85,7 +85,7 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Naya Challenge kamyabi se add ho gaya!'),
+        content: Text('New Challenge added successfully!'),
         backgroundColor: sage,
       ),
     );
@@ -228,8 +228,8 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       style: const TextStyle(color: Colors.white, fontSize: 14),
       validator: (v) {
-        if (v == null || v.trim().isEmpty) return 'Field fill karna zaroori hai';
-        if (isNumber && int.tryParse(v) == null) return 'Sirf numbers allow hain';
+        if (v == null || v.trim().isEmpty) return 'This field is required';
+        if (isNumber && int.tryParse(v) == null) return 'Only numbers are allowed';
         return null;
       },
       decoration: InputDecoration(
@@ -284,7 +284,7 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
               ),
               Expanded(
                 child: _challenges.isEmpty
-                    ? _staggered(1, const Center(child: Text('Koi active challenges nahi hain!', style: TextStyle(color: Colors.white70))))
+                    ? _staggered(1, const Center(child: Text('No active challenges found!', style: TextStyle(color: Colors.white70))))
                     : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   itemCount: _challenges.length,

@@ -30,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
-  // Orbit size ko desktop aur mobile dono ke liye safe (340) rakha hai
+  // Orbit size is set to 340, safe for both desktop and mobile
   final double orbitSize = 340.0;
 
   @override
@@ -109,7 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
 
-              // 3. Orbit badges (Ab size bada kar diya hai taake boundary se cut na ho)
+              // 3. Orbit badges (Size increased to prevent clipping at boundaries)
               AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
@@ -119,7 +119,7 @@ class _SplashScreenState extends State<SplashScreen>
                   );
                 },
                 child: SizedBox(
-                  // Orbit size se 40 padding badha di taake icons safe rahein
+                  // Added 40 padding to orbit size to keep icons safe
                   width: orbitSize + 40,
                   height: orbitSize + 40,
                   child: Stack(
@@ -233,10 +233,10 @@ class _SplashScreenState extends State<SplashScreen>
   }) {
     final angle = angleDeg * math.pi / 180;
 
-    // Naye container ka center point nikalne ke liye extra padding (+ 20) shamil ki hai
+    // Added extra padding (+ 20) to calculate the center point for the new container
     final centerFactor = (orbitSize + 40) / 2;
 
-    // Badge size ka half (19) minus karne se perfect spacing aayegi
+    // Subtract half of badge size (19) for perfect spacing
     final dx = radius * math.cos(angle) + centerFactor - 19;
     final dy = radius * math.sin(angle) + centerFactor - 19;
 

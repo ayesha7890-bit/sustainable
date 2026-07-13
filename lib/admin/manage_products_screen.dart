@@ -79,7 +79,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
         final matchesSearch =
             query.isEmpty || p['name'].toString().toLowerCase().contains(query);
         final matchesCategory =
-            _categoryFilter == 'All' || p['category'] == _categoryFilter;
+            _categoryFilter == 'All' || _categoryFilter == 'All' || p['category'] == _categoryFilter;
         return matchesSearch && matchesCategory;
       }).toList();
     });
@@ -102,7 +102,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
     }
   }
 
-  // Stylish bottom sheet: Camera ya Gallery choose karne ke liye
+  // Stylish bottom sheet: Choose Camera or Gallery
   Future<ImageSource?> _showImageSourceSheet() {
     return showModalBottomSheet<ImageSource>(
       context: context,
@@ -185,8 +185,8 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     colors: [_primary, _secondary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -235,7 +235,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
       setState(() => _isSaving = false);
       _showSnack(wasEditing
           ? 'Product updated! ✏️'
-          : 'Product save Sucsessfuly! ✅');
+          : 'Product saved successfully! ✅');
     } catch (e) {
       setState(() => _isSaving = false);
       if (dialogContext.mounted) {
@@ -256,7 +256,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: const Text('Delete Product?'),
-        content: Text('Are you "${product['name']}" want to delte product?'),
+        content: Text('Are you sure you want to delete "${product['name']}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -275,7 +275,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
     try {
       await DatabaseHelper.instance.deleteProduct(product['id']);
       await _loadData(showLoader: false);
-      _showSnack('Product delete Sucsessfuly! 🗑️');
+      _showSnack('Product deleted successfully! 🗑️');
     } catch (e) {
       _showSnack('Delete fail: $e', isError: true);
     }
@@ -303,7 +303,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
   }
 
   // ---------------------------------------------------------------
-  // ADD / EDIT DIALOG
+  // ADD / EDIT DIALOG (FIXED OVERFLOW & KEYBOARD BUGS)
   // ---------------------------------------------------------------
 
   void _showProductDialog({Map<String, dynamic>? product}) {
@@ -321,291 +321,275 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
         ? product!['image_url']
         : null;
 
-    showDialog(
+    // CHANGED: Switched from showDialog to showModalBottomSheet for keyboard resilience
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) => TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.85, end: 1.0),
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutBack,
-        builder: (context, scale, child) => Transform.scale(
-          scale: scale,
-          child: Opacity(opacity: scale.clamp(0.0, 1.0), child: child),
-        ),
-        child: StatefulBuilder(
-          builder: (context, setDialogState) => Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom, // Pushes everything above keyboard
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- Gradient Header ---
+                Container(
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_primary, _secondary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // --- Gradient Header ---
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primary, _secondary],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(24)),
+                        child: Icon(
+                          product == null
+                              ? Icons.add_shopping_cart_rounded
+                              : Icons.edit_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                      child: Row(
+                      const SizedBox(width: 12),
+                      Text(
+                        product == null ? 'New Product' : 'Edit Product',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // --- Scrollable Form Body ---
+                Flexible(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.18),
+                          // --- Animated Image Preview ---
+                          Center(
+                            child: GestureDetector(
+                              onTap: () => _pickImage(setDialogState),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOut,
+                                height: 120,
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  color: _primary.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _selectedImagePath != null
+                                        ? _secondary
+                                        : _primary.withOpacity(0.25),
+                                    width: 1.6,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _primary.withOpacity(0.12),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: _selectedImagePath != null
+                                    ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(19),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Image.file(File(_selectedImagePath!),
+                                          fit: BoxFit.cover),
+                                      Positioned(
+                                        right: 6,
+                                        bottom: 6,
+                                        child: CircleAvatar(
+                                          radius: 14,
+                                          backgroundColor:
+                                          Colors.black.withOpacity(0.55),
+                                          child: const Icon(Icons.edit,
+                                              size: 15, color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                    : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            _primary.withOpacity(0.85),
+                                            _secondary.withOpacity(0.85),
+                                          ],
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                          Icons.add_a_photo_rounded,
+                                          color: Colors.white,
+                                          size: 20),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text('Pic Upload',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black54)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: 'Product Name',
+                              prefixIcon: Icon(Icons.shopping_bag_outlined,
+                                  color: _primary),
+                              filled: true,
+                              fillColor: _primary.withOpacity(0.04),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Name required'
+                                : null,
+                          ),
+                          const SizedBox(height: 14),
+                          DropdownButtonFormField<String>(
+                            value: _selectedCategory,
+                            decoration: InputDecoration(
+                              labelText: 'Category',
+                              prefixIcon:
+                              Icon(Icons.category_outlined, color: _primary),
+                              filled: true,
+                              fillColor: _primary.withOpacity(0.04),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            hint: const Text('Select Category'),
+                            items: _categories.map((cat) {
+                              return DropdownMenuItem<String>(
+                                value: cat['name'].toString(),
+                                child: Text(cat['name'].toString()),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setDialogState(() => _selectedCategory = value);
+                            },
+                            validator: (v) => v == null ? 'Select Category' : null,
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _descController,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              labelText: 'Description (optional)',
+                              prefixIcon:
+                              Icon(Icons.notes_outlined, color: _primary),
+                              filled: true,
+                              fillColor: _primary.withOpacity(0.04),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // --- Actions Sticky Bar ---
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _primary,
+                            side: BorderSide(color: _primary.withOpacity(0.3)),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Icon(
-                              product == null
-                                  ? Icons.add_shopping_cart_rounded
-                                  : Icons.edit_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            product == null ? 'New Product' : 'Eidit Product',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // --- Form Body ---
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-                      child: SingleChildScrollView(
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // --- Animated Image Preview ---
-                              Center(
-                                child: GestureDetector(
-                                  onTap: () => _pickImage(setDialogState),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 250),
-                                    curve: Curves.easeOut,
-                                    height: 130,
-                                    width: 130,
-                                    decoration: BoxDecoration(
-                                      color: _primary.withOpacity(0.05),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: _selectedImagePath != null
-                                            ? _secondary
-                                            : _primary.withOpacity(0.25),
-                                        width: 1.6,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _primary.withOpacity(0.12),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: _selectedImagePath != null
-                                        ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(19),
-                                      child: Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          Image.file(File(_selectedImagePath!),
-                                              fit: BoxFit.cover),
-                                          Positioned(
-                                            right: 6,
-                                            bottom: 6,
-                                            child: CircleAvatar(
-                                              radius: 14,
-                                              backgroundColor:
-                                              Colors.black.withOpacity(0.55),
-                                              child: const Icon(Icons.edit,
-                                                  size: 15, color: Colors.white),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                        : Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                _primary.withOpacity(0.85),
-                                                _secondary.withOpacity(0.85),
-                                              ],
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                              Icons.add_a_photo_rounded,
-                                              color: Colors.white,
-                                              size: 22),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const Text('Pic Upload',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.black54)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              TextFormField(
-                                controller: _nameController,
-                                decoration: InputDecoration(
-                                  labelText: 'Product Name',
-                                  prefixIcon: Icon(Icons.shopping_bag_outlined,
-                                      color: _primary),
-                                  filled: true,
-                                  fillColor: _primary.withOpacity(0.04),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                                validator: (v) => v == null || v.trim().isEmpty
-                                    ? 'Name required'
-                                    : null,
-                              ),
-                              const SizedBox(height: 14),
-                              DropdownButtonFormField<String>(
-                                value: _selectedCategory,
-                                decoration: InputDecoration(
-                                  labelText: 'Category',
-                                  prefixIcon:
-                                  Icon(Icons.category_outlined, color: _primary),
-                                  filled: true,
-                                  fillColor: _primary.withOpacity(0.04),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                                hint: const Text('Select Category'),
-                                items: _categories.map((cat) {
-                                  return DropdownMenuItem<String>(
-                                    value: cat['name'].toString(),
-                                    child: Text(cat['name'].toString()),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  setDialogState(() => _selectedCategory = value);
-                                },
-                                validator: (v) => v == null ? 'Select Category' : null,
-                              ),
-                              const SizedBox(height: 14),
-                              TextFormField(
-                                controller: _descController,
-                                maxLines: 2,
-                                decoration: InputDecoration(
-                                  labelText: 'Description (optional)',
-                                  prefixIcon:
-                                  Icon(Icons.notes_outlined, color: _primary),
-                                  filled: true,
-                                  fillColor: _primary.withOpacity(0.04),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          onPressed: () {
+                            _resetForm();
+                            Navigator.pop(dialogContext);
+                          },
+                          child: const Text('Cancel'),
                         ),
                       ),
-                    ),
-                    // --- Actions ---
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _primary,
-                                side: BorderSide(color: _primary.withOpacity(0.3)),
-                                padding: const EdgeInsets.symmetric(vertical: 13),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: () {
-                                _resetForm();
-                                Navigator.pop(dialogContext);
-                              },
-                              child: const Text('Cancel'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _secondary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                            elevation: 0,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _secondary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 13),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              onPressed: _isSaving
-                                  ? null
-                                  : () {
-                                setDialogState(() {});
-                                _saveProduct(dialogContext);
-                              },
-                              icon: _isSaving
-                                  ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor:
-                                  AlwaysStoppedAnimation(Colors.white),
-                                ),
-                              )
-                                  : const Icon(Icons.check, size: 18),
-                              label: Text(product == null ? 'Save' : 'Update'),
+                          onPressed: _isSaving
+                              ? null
+                              : () {
+                            setDialogState(() {});
+                            _saveProduct(dialogContext);
+                          },
+                          icon: _isSaving
+                              ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                              AlwaysStoppedAnimation(Colors.white),
                             ),
-                          ),
-                        ],
+                          )
+                              : const Icon(Icons.check, size: 18),
+                          label: Text(product == null ? 'Save' : 'Update'),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -666,7 +650,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Product dhoondhein...',
+          hintText: 'Search products...',
           prefixIcon: const Icon(Icons.search),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
@@ -687,7 +671,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
   }
 
   Widget _buildCategoryChips() {
-    final chipNames = ['Sab', ..._categories.map((c) => c['name'].toString())];
+    final chipNames = ['All', ..._categories.map((c) => c['name'].toString())];
     return SizedBox(
       height: 42,
       child: ListView.separated(
@@ -800,7 +784,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
                       )
                           : _imagePlaceholder(),
                     ),
-                    // Subtle gradient for legibility + delete button
                     Positioned(
                       top: 6,
                       right: 6,
@@ -822,32 +805,31 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.all(10.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      product['name'].toString(),
+                      product['category']?.toString().toUpperCase() ?? '',
+                      style: const TextStyle(fontSize: 9, color: _secondary, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      product['name']?.toString() ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: _primary),
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: _primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        product['category'].toString(),
-                        style: const TextStyle(
-                            fontSize: 11, color: _primary, fontWeight: FontWeight.w600),
+                    if (product['description'] != null && product['description'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        product['description'].toString(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: Colors.black54),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -860,33 +842,16 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
 
   Widget _imagePlaceholder() {
     return Container(
-      color: _primary.withOpacity(0.08),
-      child: Icon(Icons.eco_rounded, color: _primary.withOpacity(0.5), size: 36),
+      color: _primary.withOpacity(0.05),
+      child: const Icon(Icons.shopping_bag_outlined, size: 32, color: _secondary),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutBack,
-        builder: (context, value, child) => Transform.scale(scale: value, child: child),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.inventory_2_outlined, size: 72, color: _primary.withOpacity(0.35)),
-            const SizedBox(height: 12),
-            const Text('Koi product nahi mila',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            const Text(
-              'Neeche "Add Product" button se naya product add karein.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54),
-            ),
-          ],
-        ),
+    return const Center(
+      child: Text(
+        'No products found.',
+        style: TextStyle(color: Colors.black54, fontSize: 14),
       ),
     );
   }

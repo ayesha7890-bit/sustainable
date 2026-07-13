@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -19,14 +20,13 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2, // version 1 -> 2 kyunki education_hub table baad mein add hui
+      version: 4, // Updated version 4 to include Community Forum table
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
-  // Jab existing users ki DB purani version pe ho, ye missing tables bana dega
-  // bina unka purana data delete kiye.
+  // Creates new tables on database upgrade without deleting old data
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('''
@@ -40,11 +40,57 @@ class DatabaseHelper {
         )
       ''');
     }
+    if (oldVersion < 3) {
+      // 1. User Carbon Footprint Tracking Logs
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS carbon_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          transport_co2 REAL NOT NULL,
+          energy_co2 REAL NOT NULL,
+          waste_co2 REAL NOT NULL,
+          total_co2 REAL NOT NULL
+        )
+      ''');
+
+      // 2. User Waste Recycling Tracker Logs
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS waste_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          total_waste_kg REAL NOT NULL,
+          recycling_kg REAL NOT NULL,
+          compost_kg REAL NOT NULL
+        )
+      ''');
+
+      // 3. Track which challenges are completed by the user
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS completed_challenges (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          challenge_id INTEGER NOT NULL,
+          completed_at TEXT NOT NULL
+        )
+      ''');
+    }
+
+    // 💡 AUTOMATIC UPGRADE FOR FORUM TABLE
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS forum_posts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          author TEXT NOT NULL,
+          content TEXT NOT NULL,
+          likes INTEGER DEFAULT 0,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
   }
 
-  // Yahan Admin ke saare zaroori tables bante hain
+  // Creates all tables at once when the app is first launched
   Future _createDB(Database db, int version) async {
-    // 1. Categories Table
     await db.execute('''
       CREATE TABLE categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +98,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 2. Products Table
     await db.execute('''
       CREATE TABLE products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +108,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 3. Challenges Table
     await db.execute('''
       CREATE TABLE challenges (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +118,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 4. Energy & Green Tips Table
     await db.execute('''
       CREATE TABLE tips (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,38 +127,143 @@ class DatabaseHelper {
       )
     ''');
 
-    // 5. Education & Certifications Hub Table
     await db.execute('''
       CREATE TABLE education_hub (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL,         -- 'Article' ya 'Certification' store hoga
-        title TEXT NOT NULL,        -- Article ka naam ya Certificate ka naam
-        subtitle TEXT,              -- Article ka author/category ya Certificate ki Organization
-        description TEXT NOT NULL,  -- Article ki details ya Certificate ka matlab
-        image_url TEXT              -- Article ki cover photo ya Certificate ka Logo
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        subtitle TEXT,
+        description TEXT NOT NULL,
+        image_url TEXT
       )
     ''');
 
-    //RECIPS
     await db.execute('''
-  CREATE TABLE recipes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    ingredients TEXT NOT NULL,
-    instructions TEXT NOT NULL,
-    is_plant_based INTEGER DEFAULT 1
-  )
-''');
+      CREATE TABLE recipes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        ingredients TEXT NOT NULL,
+        instructions TEXT NOT NULL,
+        is_plant_based INTEGER DEFAULT 1
+      )
+    ''');
+
     await db.execute('''
-  CREATE TABLE travel_tips (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT NOT NULL, -- 'Travel', 'Energy', or 'Waste'
-    title TEXT NOT NULL,
-    description TEXT NOT NULL
-  )
-''');
+      CREATE TABLE travel_tips (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE carbon_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        transport_co2 REAL NOT NULL,
+        energy_co2 REAL NOT NULL,
+        waste_co2 REAL NOT NULL,
+        total_co2 REAL NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE waste_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        total_waste_kg REAL NOT NULL,
+        recycling_kg REAL NOT NULL,
+        compost_kg REAL NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE completed_challenges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        challenge_id INTEGER NOT NULL,
+        completed_at TEXT NOT NULL
+      )
+    ''');
+
+    // 💡 New Community Forum Table for fresh installs
+    await db.execute('''
+      CREATE TABLE forum_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        author TEXT NOT NULL,
+        content TEXT NOT NULL,
+        likes INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
   }
-  //travel
+
+  // ==========================================
+  // 🔥 NEW USER-SIDE CRUD METHODS (V3 & V4)
+  // ==========================================
+
+  // --- 💬 Community Forum Methods (NEW) ---
+  Future<int> insertForumPost(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.insert('forum_posts', row);
+  }
+
+  Future<List<Map<String, dynamic>>> getForumPosts() async {
+    final db = await instance.database;
+    return await db.query('forum_posts', orderBy: 'id DESC');
+  }
+
+  Future<int> likeForumPost(int id, int currentLikes) async {
+    final db = await instance.database;
+    return await db.update(
+      'forum_posts',
+      {'likes': currentLikes + 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // --- 📊 Carbon Logs Methods ---
+  Future<int> insertCarbonLog(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.insert('carbon_logs', row);
+  }
+
+  Future<List<Map<String, dynamic>>> getCarbonLogs() async {
+    final db = await instance.database;
+    return await db.query('carbon_logs', orderBy: 'id DESC');
+  }
+
+  // --- 🗑️ Waste Logs Methods ---
+  Future<int> insertWasteLog(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.insert('waste_logs', row);
+  }
+
+  Future<List<Map<String, dynamic>>> getWasteLogs() async {
+    final db = await instance.database;
+    return await db.query('waste_logs', orderBy: 'id DESC');
+  }
+
+  // --- 🎯 Completed Challenges Track Methods ---
+  Future<int> completeChallenge(int challengeId, String date) async {
+    final db = await instance.database;
+    return await db.insert('completed_challenges', {
+      'challenge_id': challengeId,
+      'completed_at': date,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCompletedChallenges() async {
+    final db = await instance.database;
+    return await db.query('completed_challenges');
+  }
+
+  // ==========================================
+  // 🏛️ ADMIN PANEL & OLD CRUD OPERATIONS (EXISTING)
+  // ==========================================
+
   Future<int> insertTravelTip(Map<String, dynamic> row) async {
     Database db = await instance.database;
     return await db.insert('travel_tips', row);
@@ -131,28 +279,20 @@ class DatabaseHelper {
     return await db.delete('travel_tips', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Recipes insert karne ke liye
   Future<int> insertRecipe(Map<String, dynamic> row) async {
     Database db = await instance.database;
     return await db.insert('recipes', row);
   }
 
-// Recipes fetch/load karne ke liye
   Future<List<Map<String, dynamic>>> fetchRecipes() async {
     Database db = await instance.database;
     return await db.query('recipes');
   }
 
-// Recipe delete karne ke liye
   Future<int> deleteRecipe(int id) async {
     Database db = await instance.database;
     return await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
   }
-
-  // ==========================================
-  // --- 📑 CATEGORIES CRUD OPERATIONS ---
-  // ==========================================
-
 
   Future<int> insertCategory(String name) async {
     final db = await instance.database;
@@ -166,12 +306,7 @@ class DatabaseHelper {
 
   Future<int> updateCategory(int id, String name) async {
     final db = await instance.database;
-    return await db.update(
-      'categories',
-      {'name': name},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.update('categories', {'name': name}, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> deleteCategory(int id) async {
@@ -181,17 +316,9 @@ class DatabaseHelper {
 
   Future<bool> categoryExists(String name) async {
     final db = await instance.database;
-    final result = await db.query(
-      'categories',
-      where: 'LOWER(name) = ?',
-      whereArgs: [name.toLowerCase()],
-    );
+    final result = await db.query('categories', where: 'LOWER(name) = ?', whereArgs: [name.toLowerCase()]);
     return result.isNotEmpty;
   }
-
-  // ==========================================
-  // --- 🎓 EDUCATION & CERTIFICATIONS CRUD ---
-  // ==========================================
 
   Future<int> insertEducationItem(Map<String, dynamic> row) async {
     final db = await instance.database;
@@ -208,10 +335,6 @@ class DatabaseHelper {
     return await db.delete('education_hub', where: 'id = ?', whereArgs: [id]);
   }
 
-  // ==========================================
-  // --- 🛒 PRODUCTS CRUD OPERATIONS ---
-  // ==========================================
-
   Future<int> insertProduct(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('products', row);
@@ -219,28 +342,18 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> fetchProducts() async {
     final db = await instance.database;
-    return await db.query('products', orderBy: 'id DESC'); // Naya product sabsay upar dikhane ke liye
+    return await db.query('products', orderBy: 'id DESC');
   }
 
-  // Naya add kiya gaya function (Product Edit karne ke liye)
   Future<int> updateProduct(int id, Map<String, dynamic> row) async {
     final db = await instance.database;
-    return await db.update(
-      'products',
-      row,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.update('products', row, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> deleteProduct(int id) async {
     final db = await instance.database;
     return await db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
-
-  // ==========================================
-  // --- 🎯 CHALLENGES CRUD OPERATIONS ---
-  // ==========================================
 
   Future<int> insertChallenge(Map<String, dynamic> row) async {
     final db = await instance.database;
@@ -257,10 +370,6 @@ class DatabaseHelper {
     return await db.delete('challenges', where: 'id = ?', whereArgs: [id]);
   }
 
-  // ==========================================
-  // --- 💡 GREEN TIPS CRUD OPERATIONS ---
-  // ==========================================
-
   Future<int> insertTip(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('tips', row);
@@ -276,7 +385,6 @@ class DatabaseHelper {
     return await db.delete('tips', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Database close karne ke liye
   Future close() async {
     final db = await instance.database;
     db.close();

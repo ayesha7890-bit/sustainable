@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sustainable/admin/admindashboard.dart';
+import 'package:sustainable/screen/About_contactscreen.dart';
+import 'package:sustainable/screen/contactus.dart';
+import 'package:sustainable/screen/dashboard.dart';
 import 'package:sustainable/screen/register.dart';
 
 
@@ -23,8 +26,10 @@ class _LoginScreenState extends State<LoginScreen>
 
   // Splash / Welcome / Register theme colors
   static const Color forest = Color(0xFF2F4A3E);
-  static const Color sage = Color(0xFF5E8570);
-  static const Color sand = Color(0xFFCBBE9C);
+   static const Color sage = Color(0xFF5E8570);
+   static const Color sand = Color(0xFFCBBE9C);
+
+
 
   @override
   void initState() {
@@ -48,13 +53,13 @@ class _LoginScreenState extends State<LoginScreen>
       String email = _emailController.text.trim();
       String password = _passwordController.text.trim();
 
-      // 1. CHK: Kya yeh hamara SPECIFIC ADMIN hai?
+      // 1. CHK: Is this our SPECIFIC ADMIN?
       if (email == "admin@eco.com" && password == "admin123") {
         if (!mounted) return;
-        // Admin direct Dashboard screen par jayega
+        // Admin will be redirected to the Dashboard screen
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()), // Aapke dashboard class ka jo bhi sahi naam ho
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()), // Admin dashboard screen
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -64,20 +69,19 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         );
       }
-      // 2. AGER ADMIN NAHI HAI TOU USER HO GA (DATABASE SE CHECK KAREIN)
+      // 2. IF NOT ADMIN THEN USER (CHECK DATABASE)
       else {
-        // TODO: DatabaseHelper se password check lagane ka code (Agar setup hai)
+        // TODO: DatabaseHelper password check logic (if setup)
         // bool isUserValid = await DatabaseHelper.instance.checkUserLogin(email, password);
 
-        bool isUserValid = true; // Temporary placeholder true kiya hai jab tak aap DB call check karein
+        bool isUserValid = true; // Temporary placeholder set to true until database check
 
         if (isUserValid) {
           if (!mounted) return;
-          // Normal user direct apni user screen par jayega
+          // Normal user will be redirected to their home screen
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const Scaffold(body: Center(child: Text("User Home Screen")))),
-            // 👆 Yahan aap apni User side ki home screen ka naam (jaise const HomeScreen()) likh kar import kar lein
+            MaterialPageRoute(builder: (context) => DashboardShell()),
           );
 
           ScaffoldMessenger.of(context).showSnackBar(

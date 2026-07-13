@@ -28,9 +28,12 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   late Animation<double> _fabScale;
 
   // ---- Design system ----
-  static const Color _forest = Color(0xFF2F4A3E);
-  static const Color _sage = Color(0xFF5E8570);
-  static const Color _sand = Color(0xFFCBBE9C);
+  // static const Color _forest = Color(0xFF2F4A3E);
+  // static const Color _sage = Color(0xFF5E8570);
+  // static const Color _sand = Color(0xFFCBBE9C);
+  static const Color _forest= Color(0xFF0B1D3A);   // space background
+  static const Color _sage = Color(0xFF1B6CA8);   // ocean
+  static const Color _sand = Color(0xFF3E8E5A); // land
 
   static const _bgGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -116,8 +119,8 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       if (dialogContext.mounted) Navigator.pop(dialogContext);
       await _refreshCategories();
       _showSnack(wasEditing
-          ? 'Category update ho gayi! ✏️'
-          : 'Category add ho gayi! ✅');
+          ? 'Category updated! '
+          : 'Category add! ');
     } catch (e) {
       debugPrint('Save category error: $e');
       if (dialogContext.mounted) {
@@ -137,7 +140,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     if (confirm != true) return;
 
     await DatabaseHelper.instance.deleteCategory(category['id']);
-    _showSnack('Category delete ho gayi! 🗑️');
+    _showSnack('Category delete ! 🗑️');
     _refreshCategories();
   }
 
@@ -151,7 +154,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
         .toList();
 
     if (rawNames.isEmpty) {
-      _showSnack('Koi valid category naam nahi mila.', isError: true);
+      _showSnack('no valid category name.', isError: true);
       return;
     }
 
@@ -171,10 +174,10 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       _bulkAddController.clear();
       if (mounted) Navigator.pop(context);
       setState(() => _isImporting = false);
-      _showSnack('$added nayi categories add ho gayin! 📥');
+      _showSnack('$added new category added! 📥');
     } catch (e) {
       setState(() => _isImporting = false);
-      _showSnack('Bulk add fail ho gaya: $e', isError: true);
+      _showSnack('Bulk category add fail: $e', isError: true);
     }
   }
 
@@ -207,8 +210,8 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Multiple naam paste ya type karein — comma (,) ya '
-                          'nayi line se separate karein.',
+                      'Paste or type multiple names — separated by comma (,) or '
+                          'a new line.',
                       style: TextStyle(
                         fontSize: 12.5,
                         color: _forest.withValues(alpha: 0.6),
@@ -257,7 +260,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
         icon: Icons.delete_outline_rounded,
         title: 'Delete Category?',
         content: Text(
-          'Kya aap "$name" ko delete karna chahte hain?',
+          'Are you sure you want to delete "$name"?',
           style: TextStyle(color: _forest.withValues(alpha: 0.75)),
         ),
         actions: [
@@ -298,16 +301,16 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
           ),
           child: _themedDialog(
             icon: category == null ? Icons.add_circle_rounded : Icons.edit_rounded,
-            title: category == null ? 'Nayi Category' : 'Category Edit Karein',
+            title: category == null ? 'New Category' : 'Edit Category',
             content: Form(
               key: _formKey,
               child: TextFormField(
                 controller: _categoryNameController,
                 autofocus: true,
-                decoration: _dialogFieldDecoration('Category Ka Naam',
+                decoration: _dialogFieldDecoration('Category Name',
                     icon: Icons.label_outline_rounded),
                 validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Naam likhna zaroori hai'
+                    ? 'Name is required'
                     : null,
               ),
             ),
@@ -518,7 +521,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                     ),
                   ),
                   Text(
-                    'Add, edit ya delete karein',
+                    'Add, edit or delete',
                     style: TextStyle(color: Colors.white70, fontSize: 12.5),
                   ),
                 ],
@@ -735,7 +738,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
               ),
               const SizedBox(height: 16),
               const Text(
-                'Koi category nahi mili',
+                'No category found',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -744,7 +747,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
               ),
               const SizedBox(height: 6),
               const Text(
-                'Neeche "Add Category" button se nayi category add karein\nya upar "Bulk Add" istemal karein.',
+                'Add a new category using the "Add Category" button below\nor use "Bulk Add" above.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white70, height: 1.4),
               ),

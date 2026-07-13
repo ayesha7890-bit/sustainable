@@ -79,7 +79,7 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$_selectedCategory tip kamyabi se save ho gayi!'),
+        content: Text('$_selectedCategory tip completed '),
         backgroundColor: sage,
       ),
     );
@@ -221,7 +221,7 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
       controller: controller,
       maxLines: maxLines,
       style: const TextStyle(color: Colors.white, fontSize: 14),
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Field fill karna zaroori hai' : null,
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'This field is required' : null,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
@@ -281,7 +281,7 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
               ),
               Expanded(
                 child: _tips.isEmpty
-                    ? _staggered(1, const Center(child: Text('Koi suggestions mojud nahi hain!', style: TextStyle(color: Colors.white70))))
+                    ? _staggered(1, const Center(child: Text('No suggestions found!', style: TextStyle(color: Colors.white70))))
                     : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   itemCount: _tips.length,

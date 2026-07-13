@@ -87,7 +87,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     if (module.screenBuilder == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${module.title} screen abhi ban raha hai...'),
+          content: Text('${module.title} is being developed...'),
           backgroundColor: const Color(0xFF2F4A3E),
           behavior: SnackBarBehavior.floating,
         ),

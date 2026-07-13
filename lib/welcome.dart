@@ -1,4 +1,4 @@
-import 'dart:ui'; // ImageFilter ke liye zaroori hai
+import 'dart:ui'; // Required for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:sustainable/screen/loginpage.dart';
 import 'package:sustainable/screen/register.dart';
@@ -9,7 +9,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Image ke asli background green color se match kiya hai taake picture original lage
+      // Matches the original green background color of the image for a seamless look
       backgroundColor: const Color(0xFF2F4A3E),
       body: Stack(
         children: [
@@ -20,14 +20,14 @@ class WelcomeScreen extends StatelessWidget {
             decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/img.png'),
-                fit: BoxFit.cover, // Isse image khinchegi nahi aur quality kharab nahi hogi
-                alignment: Alignment(0.0, -0.35), // Image ko thoda upar shift kiya taake earth aur sprout dono perfectly center mein aayin
+                fit: BoxFit.cover, // Prevents image distortion and maintains quality
+                alignment: Alignment(0.0, -0.35), // Shifts the image up to center the earth and sprout
               ),
             ),
           ),
 
-          // 1b. DARK SCRIM OVERLAY — image ki brightness kam karne ke liye
-          // (top halka, bottom zyada dark taake glass card ka text aur zyada readable ho)
+          // 1b. DARK SCRIM OVERLAY — To reduce image brightness
+          // (lighter at top, darker at bottom to improve readability on glass card)
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -58,7 +58,7 @@ class WelcomeScreen extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
                     decoration: BoxDecoration(
-                      // Glass transparency thodi dark rakhi hai taake piche ki lines text ko kharab na karein
+                      // Glass transparency is slightly dark to ensure readability against background lines
                       color: const Color(0xFF0D2318).withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(
@@ -165,8 +165,8 @@ class WelcomeScreen extends StatelessWidget {
 }
 
 // ANIMATED "GET STARTED" BUTTON
-// Tap pe halka scale-down/up "press" feel + gradient jo splash screen
-// (main.dart) ke colors se match karta hai: forest -> sage -> sand.
+// On tap: slight scale-down/up "press" effect + gradient matching splash screen
+// (main.dart) colors: forest -> sage -> sand.
 class _AnimatedGetStartedButton extends StatefulWidget {
   final VoidCallback onTap;
 
