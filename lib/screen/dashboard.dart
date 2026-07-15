@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui'; // Used for premium ImageFilter blur effects
+import 'package:firebase_auth/firebase_auth.dart'; // 1. Firebase Auth Import Kiya
 
 // Your Exact Project Path Imports
 import 'package:sustainable/screen/home_screen.dart';
@@ -14,7 +15,7 @@ import 'package:sustainable/screen/TipsScreen.dart';
 import 'package:sustainable/screen/WasteTrackerScreen.dart';
 import 'package:sustainable/screen/carbon_tracker_screen.dart';
 import 'package:sustainable/screen/certifications_screen.dart';
-import 'package:sustainable/screen/home_screen.dart';
+import 'package:sustainable/screen/loginpage.dart'; // 2. Login Screen Import Kiya redirect karne ke liye
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});
@@ -32,7 +33,6 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
   static const Color sage = Color(0xFF5E8570);
   static const Color sand = Color(0xFFCBBE9C);
 
-  // 1. FIXED: Declared as late final so it can safely use _onPageChanged inside initState
   late final List<Widget> pages;
 
   // Document Modules Professional Titles corresponding to indices
@@ -59,17 +59,13 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
       duration: const Duration(milliseconds: 400),
     );
 
-    // 2. FIXED: Initialized here so instance members can be accessed safely without Dart errors
     pages = [
-      HomeScreen(onNavigate: (index) => _onPageChanged(index)), // Index 0: Home Page (Passes callback)
-      // EcoHomeScreen(onNavigate: (index) => _onPageChanged(index)), // Index 0: Home Page (Passes callback)
+      HomeScreen(onNavigate: (index) => _onPageChanged(index)), // Index 0: Home Page
       carban(),                 // Index 1: Carbon Tracker
       ChallengesScreen(),       // Index 2: Sustainable Challenges
       ForumScreen(),            // Index 3: Community Forum
-      ProductsScreen(),
-      EducationHubScreen(),
-      // CertificationsScreen(),// Index 4: Eco Alternatives
-      // certificate(),            // Index 5: Eco Labels Guide
+      ProductsScreen(),         // Index 4: Eco Alternatives
+      EducationHubScreen(),     // Index 5: Eco Labels Guide
       WasteTrackerScreen(),     // Index 6: Analytics & Waste Logs
       RecipesScreen(),          // Index 7: Meal Planner
       TipsScreen(),             // Index 8: Energy & Travel Hub
@@ -90,6 +86,35 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
     _fadeController.forward(); // Dynamic screen fluid switch trigger
   }
 
+  // 3. Logout function jo account sign out karega aur wapas login par bhejega
+  void _handleLogout() async {
+    try {
+      await FirebaseAuth.instance.signOut(); // Firebase Sign Out
+
+      if (!mounted) return;
+
+      // Pop Drawer and clear stack to go back to Login Screen
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (Route<dynamic> route) => false,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Logged out successfully!"),
+          backgroundColor: forest,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Logout failed: ${e.toString()}"),
+          backgroundColor: const Color(0xFFE57373),
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _fadeController.dispose();
@@ -98,8 +123,12 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    // Current user's email dynamic check
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    final String userEmail = currentUser?.email ?? 'citizen@ecowise.com';
+    final String userName = currentUser?.displayName ?? 'Eco Citizen';
+
     return Container(
-      // Global Premium Dynamic Theme (Gradient Window)
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -109,7 +138,7 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
         ),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Keeps our beautiful gradient visible
+        backgroundColor: Colors.transparent,
 
         appBar: AppBar(
           title: AnimatedSwitcher(
@@ -181,7 +210,6 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                   children: [
                     Row(
                       children: [
-                        // Glow profile avatar
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -201,23 +229,23 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Eco Citizen',
-                                style: TextStyle(
+                                userName,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 18,
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                              SizedBox(height: 2),
+                              const SizedBox(height: 2),
                               Text(
-                                'citizen@ecowise.com',
-                                style: TextStyle(
+                                userEmail,
+                                style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
                                 ),
@@ -229,7 +257,6 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Glassmorphic status label
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
@@ -265,7 +292,7 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                 ),
               ),
 
-              // Scrollable Menu Tiles tracking all 12 user segments perfectly mapped
+              // Scrollable Menu Tiles
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -282,6 +309,43 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                     _buildDrawerTile(9, Icons.menu_book_rounded, 'Educational Hub'),
                     _buildDrawerTile(10, Icons.collections_rounded, 'Inspirational Gallery'),
                     _buildDrawerTile(11, Icons.contact_support_outlined, 'About & Contact Us'),
+
+                    const Divider(height: 24, thickness: 1, indent: 16, endIndent: 16),
+
+                    // 4. Premium Design Red Colored Logout Tile
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pop(context); // Close Drawer
+                          _handleLogout(); // Trigger Logout Function
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.logout_rounded,
+                                color: Colors.redAccent,
+                                size: 22,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "Log out",
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -289,7 +353,6 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
           ),
         ),
 
-        // Fluid Cross-Fade and Slight Scale-Slide Screen Architecture
         body: FadeTransition(
           opacity: _fadeController,
           child: SlideTransition(
@@ -311,7 +374,6 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
           ),
         ),
 
-        // Premium Floating sliding capsule Bottom Navigation Bar
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -336,13 +398,11 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final double tabWidth = constraints.maxWidth / 4;
-                      // Only show sliding pill if index is 0, 1, 2, or 3
                       final bool isBottomTabActive = currentindex >= 0 && currentindex <= 3;
                       final int displayIndex = isBottomTabActive ? currentindex : 0;
 
                       return Stack(
                         children: [
-                          // Sliding pill indicator
                           if (isBottomTabActive)
                             AnimatedPositioned(
                               duration: const Duration(milliseconds: 320),
@@ -369,7 +429,6 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                                 ),
                               ),
                             ),
-                          // Tab items matching requirements exactly (Home, Tracker, Challenges, Forum)
                           Row(
                             children: [
                               Expanded(child: _buildBottomTab(0, Icons.home_rounded, 'Home')),
@@ -399,7 +458,7 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
       title: title,
       onTap: () {
         _onPageChanged(index);
-        Navigator.pop(context); // Close Drawer Panel Cleanly
+        Navigator.pop(context);
       },
     );
   }
@@ -521,7 +580,7 @@ class _HoverableDrawerTileState extends State<HoverableDrawerTile> {
   }
 }
 
-// Custom interactive Hoverable Bottom Navigation Tab (FIXED OVERFLOW BY 2.7)
+// Custom interactive Hoverable Bottom Navigation Tab
 class HoverableBottomTab extends StatefulWidget {
   final int index;
   final bool isSelected;

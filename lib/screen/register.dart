@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 1. Firebase Auth import kiya
 import 'package:sustainable/screen/loginpage.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false; // 2. Loading state handle karne ke liye
 
   late final AnimationController _controller;
   late final Animation<double> _fadeAnim;
@@ -55,19 +57,75 @@ class _RegisterScreenState extends State<RegisterScreen>
     super.dispose();
   }
 
-  void _handleRegister() {
+  // 3. Updated Firebase Sign Up logic
+  void _handleRegister() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Insert into SQLite `users` table with role = 'user' (default)
-      // then navigate to InterestsScreen for a new signup.
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+      setState(() => _isLoading = true); // Loading start
+
+      String name = _nameController.text.trim();
+      String email = _emailController.text.trim();
+      String password = _passwordController.text.trim();
+
+      try {
+        // Firebase me user create karna
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: password);
+
+        // User ka full name profile me update karna
+        if (userCredential.user != null) {
+          await userCredential.user!.updateDisplayName(name);
+        }
+
+        setState(() => _isLoading = false); // Loading stop
+
+        if (!mounted) return;
+
+        // Account banne ke baad, success message show karna aur login screen par bhejna
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account Created Successfully! Please login."),
+            backgroundColor: forest,
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+
+      } on FirebaseAuthException catch (e) {
+        setState(() => _isLoading = false); // Error par loading stop
+
+        String errorMsg = "Registration failed. Please try again.";
+        if (e.code == 'weak-password') {
+          errorMsg = "The password provided is too weak.";
+        } else if (e.code == 'email-already-in-use') {
+          errorMsg = "The account already exists for this email.";
+        } else if (e.code == 'invalid-email') {
+          errorMsg = "Please enter a valid email address.";
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: const Color(0xFFE57373),
+          ),
+        );
+      } catch (e) {
+        setState(() => _isLoading = false);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: ${e.toString()}"),
+            backgroundColor: const Color(0xFFE57373),
+          ),
+        );
+      }
     }
   }
 
-  // Staggered delay helper — makes each field fade/slide in slightly
-  // after the previous one for a smooth cascading entrance.
+  // Staggered delay helper
   Widget _staggered(int index, Widget child) {
     final start = (index * 0.08).clamp(0.0, 0.6);
     final anim = CurvedAnimation(
@@ -92,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       backgroundColor: forest,
       body: Stack(
         children: [
-          // Background gradient — matches splash_screen.dart theme
+          // Background gradient
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -275,7 +333,17 @@ class _RegisterScreenState extends State<RegisterScreen>
 
                     const SizedBox(height: 28),
 
-                    _staggered(3, _AnimatedSignUpButton(onTap: _handleRegister)),
+                    // 4. Loading check add kiya hai button swap karne ke liye
+                    _staggered(
+                      3,
+                      _isLoading
+                          ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(sand),
+                        ),
+                      )
+                          : _AnimatedSignUpButton(onTap: _handleRegister),
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -371,8 +439,6 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 }
 
-// ANIMATED SIGN UP BUTTON — same press/scale interaction + gradient
-// theme as the "Get Started" button on the welcome screen.
 class _AnimatedSignUpButton extends StatefulWidget {
   final VoidCallback onTap;
 

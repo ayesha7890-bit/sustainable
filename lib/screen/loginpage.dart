@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 1. Firebase Auth import kiya
 import 'package:sustainable/admin/admindashboard.dart';
 import 'package:sustainable/screen/About_contactscreen.dart';
 import 'package:sustainable/screen/contactus.dart';
 import 'package:sustainable/screen/dashboard.dart';
 import 'package:sustainable/screen/register.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,15 +21,14 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false; // 2. Loading state add ki taaki click par response dikhe
 
   late final AnimationController _controller;
 
   // Splash / Welcome / Register theme colors
   static const Color forest = Color(0xFF2F4A3E);
-   static const Color sage = Color(0xFF5E8570);
-   static const Color sand = Color(0xFFCBBE9C);
-
-
+  static const Color sage = Color(0xFF5E8570);
+  static const Color sand = Color(0xFFCBBE9C);
 
   @override
   void initState() {
@@ -48,18 +47,22 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  // 3. Updated handler with Firebase Auth integration
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true); // Loading start
+
       String email = _emailController.text.trim();
       String password = _passwordController.text.trim();
 
-      // 1. CHK: Is this our SPECIFIC ADMIN?
+      // 1. Check: Is this our SPECIFIC ADMIN?
       if (email == "admin@eco.com" && password == "admin123") {
+        setState(() => _isLoading = false);
         if (!mounted) return;
-        // Admin will be redirected to the Dashboard screen
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()), // Admin dashboard screen
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -69,36 +72,63 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         );
       }
-      // 2. IF NOT ADMIN THEN USER (CHECK DATABASE)
+      // 2. USER AUTHENTICATION VIA FIREBASE
       else {
-        // TODO: DatabaseHelper password check logic (if setup)
-        // bool isUserValid = await DatabaseHelper.instance.checkUserLogin(email, password);
+        try {
+          // Firebase sign-in attempt
+          UserCredential userCredential = await FirebaseAuth.instance
+              .signInWithEmailAndPassword(email: email, password: password);
 
-        bool isUserValid = true; // Temporary placeholder set to true until database check
+          setState(() => _isLoading = false); // Loading stop
 
-        if (isUserValid) {
+          if (userCredential.user != null) {
+            if (!mounted) return;
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => DashboardShell()),
+            );
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Login Successful! Welcome to EcoTrack."),
+                backgroundColor: forest,
+              ),
+            );
+          }
+        } on FirebaseAuthException catch (e) {
+          setState(() => _isLoading = false); // Loading stop on error
+
+          String errorMsg = "An error occurred. Please try again.";
+          if (e.code == 'user-not-found') {
+            errorMsg = "No user found for this email.";
+          } else if (e.code == 'wrong-password') {
+            errorMsg = "Wrong password provided.";
+          } else if (e.code == 'invalid-credential') {
+            errorMsg = "Invalid email or password.";
+          }
+
           if (!mounted) return;
-          // Normal user will be redirected to their home screen
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => DashboardShell()),
-          );
-
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Login Successful! Welcome to EcoTrack.")),
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: const Color(0xFFE57373),
+            ),
           );
-        } else {
+        } catch (e) {
+          setState(() => _isLoading = false);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Invalid Email or Password!"),
-              backgroundColor: Color(0xFFE57373),
+            SnackBar(
+              content: Text("Error: ${e.toString()}"),
+              backgroundColor: const Color(0xFFE57373),
             ),
           );
         }
       }
     }
   }
+
   // Staggered fade + slide entrance, same pattern as RegisterScreen
   Widget _staggered(int index, Widget child) {
     final start = (index * 0.08).clamp(0.0, 0.6);
@@ -124,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: forest,
       body: Stack(
         children: [
-          // Background gradient — matches splash / welcome / register theme
+          // Background gradient
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -167,26 +197,30 @@ class _LoginScreenState extends State<LoginScreen>
 
                     _staggered(
                       1,
-                      const Text(
-                        "Welcome back",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      const Center(
+                        child: Text(
+                          "Welcome back",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 6),
                     _staggered(
                       1,
-                      Text(
-                        "Log in to continue your sustainable living journey.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          height: 1.4,
+                      Center(
+                        child: Text(
+                          "Log in to continue your sustainable living journey.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            height: 1.4,
+                          ),
                         ),
                       ),
                     ),
@@ -263,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   tapTargetSize:
                                   MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                child: Text(
+                                child: const Text(
                                   "Forgot password?",
                                   style: TextStyle(
                                     color: sand,
@@ -280,7 +314,17 @@ class _LoginScreenState extends State<LoginScreen>
 
                     const SizedBox(height: 28),
 
-                    _staggered(3, _AnimatedLoginButton(onTap: _handleLogin)),
+                    // 4. Loading indicator or Animated button swap
+                    _staggered(
+                      3,
+                      _isLoading
+                          ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(sand),
+                        ),
+                      )
+                          : _AnimatedLoginButton(onTap: _handleLogin),
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -377,8 +421,6 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-// ANIMATED LOGIN BUTTON — same press/scale interaction + gradient theme
-// as the "Get Started" / "Sign up" buttons on the other screens.
 class _AnimatedLoginButton extends StatefulWidget {
   final VoidCallback onTap;
 
