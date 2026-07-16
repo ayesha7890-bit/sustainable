@@ -49,7 +49,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     _AdminModule(
       title: 'Recipes',
       icon: Icons.restaurant_menu_rounded,
-      screenBuilder: ()=>const ManageRecipesScreen(),
+      screenBuilder: ()=>const AdminAddRecipeScreen(),
     ),
     _AdminModule(
       title: 'Energy Tips',

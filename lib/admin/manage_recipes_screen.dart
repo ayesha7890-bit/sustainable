@@ -1,260 +1,123 @@
 import 'package:flutter/material.dart';
-import 'package:sustainable/database/database_helper.dart';
+import '../database/database_helper.dart';
 
-class ManageRecipesScreen extends StatefulWidget {
-  const ManageRecipesScreen({super.key});
+class AdminAddRecipeScreen extends StatefulWidget {
+  const AdminAddRecipeScreen({super.key});
 
   @override
-  State<ManageRecipesScreen> createState() => _ManageRecipesScreenState();
+  State<AdminAddRecipeScreen> createState() => _AdminAddRecipeScreenState();
 }
 
-class _ManageRecipesScreenState extends State<ManageRecipesScreen>
-    with TickerProviderStateMixin {
+class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // Controllers
   final _titleController = TextEditingController();
+  final _prepTimeController = TextEditingController();
   final _ingredientsController = TextEditingController();
   final _instructionsController = TextEditingController();
-  bool _isPlantBased = true; // Plant-based will be selected by default
+  final _ecoBenefitController = TextEditingController();
 
-  List<Map<String, dynamic>> _recipes = [];
-  late final AnimationController _entranceController;
+  // Dropdown States
+  bool _isPlantBased = true;
+  String _selectedCategory = 'Lunch';
+  String _selectedCarbonImpact = 'Low';
+  String _selectedIcon = 'bowl_food';
 
-  static const Color forest = Color(0xFF2F4A3E);
-  static const Color sage = Color(0xFF5E8570);
-  static const Color sand = Color(0xFFCBBE9C);
-  static const Color glassBg = Color(0xFF0D2318);
+  // Exact EcoWise Theme Palette Colors
+  static const Color forest = Color(0xFF1E3027); // Dark premium forest green
+  static const Color cardBg = Color(0xFF283B32); // Slightly lighter translucent green
+  static const Color sand = Color(0xFFCBBE9C); // Signature accent gold/sand
+  static const Color textLight = Color(0xFFE2EBE7);
 
-  @override
-  void initState() {
-    super.initState();
-    _loadRecipes();
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..forward();
-  }
-
-  void _loadRecipes() async {
-    // Load data using new function in DatabaseHelper
-    final data = await DatabaseHelper.instance.fetchRecipes();
-    setState(() {
-      _recipes = data;
-    });
-  }
+  final List<String> _categories = ['Breakfast', 'Lunch', 'Dinner'];
+  final List<String> _carbonImpacts = ['Low', 'Medium', 'High'];
+  final Map<String, IconData> _icons = {
+    'bowl_food': Icons.restaurant_rounded,
+    'breakfast_dining': Icons.breakfast_dining_rounded,
+    'soup_kitchen': Icons.soup_kitchen_rounded,
+    'pie_chart': Icons.pie_chart_rounded,
+  };
 
   @override
   void dispose() {
-    _entranceController.dispose();
     _titleController.dispose();
+    _prepTimeController.dispose();
     _ingredientsController.dispose();
     _instructionsController.dispose();
+    _ecoBenefitController.dispose();
     super.dispose();
   }
 
-  Widget _staggered(int index, Widget child) {
-    final start = (index * 0.08).clamp(0.0, 0.6);
-    final anim = CurvedAnimation(
-      parent: _entranceController,
-      curve: Interval(start, 1.0, curve: Curves.easeOutCubic),
-    );
-    return FadeTransition(
-      opacity: anim,
-      child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(anim),
-        child: child,
-      ),
-    );
-  }
+  Future<void> _saveRecipeToDb() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  void _saveRecipe() async {
-    // Inserting entry into the database
-    await DatabaseHelper.instance.insertRecipe({
-      'title': _titleController.text,
-      'ingredients': _ingredientsController.text,
-      'instructions': _instructionsController.text,
+    final newRecipe = {
+      'title': _titleController.text.trim(),
+      'category': _selectedCategory,
+      'carbon_impact': _selectedCarbonImpact,
+      'prep_time': _prepTimeController.text.trim().isEmpty ? '20 mins' : _prepTimeController.text.trim(),
+
+      // 💡 BACKWARD COMPATIBILITY FIX:
+      // Purane columns ko bhi data de rahe hain taaki NOT NULL constraint failed na ho
+      'ingredients': _ingredientsController.text.trim(),
+      'instructions': _instructionsController.text.trim(),
+
+      // Naye columns jo list splitting ke liye use hote hain
+      'ingredients_csv': _ingredientsController.text.trim(),
+      'instructions_csv': _instructionsController.text.trim(),
+
+      'eco_benefit': _ecoBenefitController.text.trim().isEmpty
+          ? 'This organic, plant-based meal significantly lowers greenhouse emissions.'
+          : _ecoBenefitController.text.trim(),
+      'icon_name': _selectedIcon,
       'is_plant_based': _isPlantBased ? 1 : 0,
-    });
+    };
 
-    _titleController.clear();
-    _ingredientsController.clear();
-    _instructionsController.clear();
-    setState(() {
-      _isPlantBased = true;
-    });
+    try {
+      await DatabaseHelper.instance.insertRecipe(newRecipe);
 
-    if (!mounted) return;
-    Navigator.pop(context); // Close the dialog
-    _loadRecipes(); // List will update live
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Eco-Recipe Shared Successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context); // Screen close karke piche chala jayega
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving recipe: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Sustainable Recipe published successfully!'),
-        backgroundColor: sage,
+  // Common input styling matching your dark eco UI
+  InputDecoration _inputStyle(String hint, {Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: textLight.withOpacity(0.4), fontSize: 14),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.04),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      suffixIcon: suffixIcon,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: textLight.withOpacity(0.12)),
       ),
-    );
-  }
-
-  void _deleteRecipe(int id) async {
-    await DatabaseHelper.instance.deleteRecipe(id);
-    _loadRecipes();
-  }
-
-  void _showAddDialog() {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black.withValues(alpha: 0.65),
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
-      transitionBuilder: (context, anim, secondaryAnimation, child) {
-        final curvedValue = Curves.easeOutBack.transform(anim.value);
-        return Transform.scale(
-          scale: curvedValue,
-          child: Opacity(
-            opacity: anim.value,
-            child: StatefulBuilder(
-              builder: (context, setDialogState) {
-                return Form(
-                  key: _formKey,
-                  child: AlertDialog(
-                    backgroundColor: glassBg.withValues(alpha: 0.98),
-                    insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                      side: BorderSide(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
-                    ),
-                    title: const Row(
-                      children: [
-                        Icon(Icons.restaurant_menu_rounded, color: sand, size: 22),
-                        SizedBox(width: 10),
-                        Text(
-                          'Add Eco-Recipe',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
-                      ],
-                    ),
-                    content: SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.9,
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildGlassField(
-                                controller: _titleController,
-                                label: 'Recipe Title (e.g., Avocado Green Salad)',
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Switch for Plant-Based status
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.05),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                                ),
-                                child: SwitchListTile(
-                                  title: const Text(
-                                    '100% Plant-Based / Organic',
-                                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
-                                  subtitle: Text(
-                                    'Helps lower food carbon footprint',
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
-                                  ),
-                                  activeColor: sand,
-                                  value: _isPlantBased,
-                                  onChanged: (bool value) {
-                                    setDialogState(() {
-                                      _isPlantBased = value;
-                                    });
-                                  },
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-
-                              _buildGlassField(
-                                controller: _ingredientsController,
-                                label: 'Ingredients (Comma separated)',
-                                maxLines: 3,
-                              ),
-                              const SizedBox(height: 12),
-                              _buildGlassField(
-                                controller: _instructionsController,
-                                label: 'Cooking Instructions & Eco Tips',
-                                maxLines: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 12),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold)),
-                      ),
-                      Material(
-                        color: sage,
-                        borderRadius: BorderRadius.circular(14),
-                        elevation: 4,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            FocusScope.of(context).unfocus();
-                            if (_formKey.currentState!.validate()) {
-                              _saveRecipe();
-                            }
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('Share Recipe', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                SizedBox(width: 6),
-                                Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildGlassField({
-    required TextEditingController controller,
-    required String label,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'This field is required' : null,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: sand, width: 1.4)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.redAccent, width: 1)),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.redAccent, width: 1.4)),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: sand, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
       ),
     );
   }
@@ -262,137 +125,224 @@ class _ManageRecipesScreenState extends State<ManageRecipesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [forest, sage, sand],
-            stops: [0.0, 0.55, 1.0],
-          ),
+      backgroundColor: forest,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: textLight),
+          onPressed: () => Navigator.pop(context),
         ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Sustainable Recipes",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textLight, fontSize: 18),
+            ),
+            Text(
+              "Manage eco-friendly and organic meal plans",
+              style: TextStyle(color: textLight.withOpacity(0.5), fontSize: 11),
+            )
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: textLight.withOpacity(0.08)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Inside Form Card
+                Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Sustainable Recipes', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                        Text('Manage eco-friendly and organic meal plans', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                      ],
+                    const Icon(Icons.restaurant_menu_rounded, color: sand, size: 24),
+                    const SizedBox(width: 10),
+                    const Text(
+                      "Add Eco-Recipe",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textLight),
                     ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: _recipes.isEmpty
-                    ? _staggered(1, const Center(child: Text('No recipes added yet. Launch a new dish!', style: TextStyle(color: Colors.white70))))
-                    : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  itemCount: _recipes.length,
-                  itemBuilder: (context, index) {
-                    final item = _recipes[index];
-                    final plantBased = item['is_plant_based'] == 1;
+                const SizedBox(height: 24),
 
-                    return _staggered(
-                      index,
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: glassBg.withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                        ),
-                        child: Row(
+                // 1. Recipe Title
+                TextFormField(
+                  controller: _titleController,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("Recipe Title (e.g., Avocado Green Salad)"),
+                  validator: (v) => v!.isEmpty ? "Title cannot be empty" : null,
+                ),
+                const SizedBox(height: 16),
+
+                // 2. Category Dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  dropdownColor: cardBg,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("Category"),
+                  items: _categories.map((c) {
+                    return DropdownMenuItem(value: c, child: Text(c));
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedCategory = val!),
+                ),
+                const SizedBox(height: 16),
+
+                // 3. Prep Time
+                TextFormField(
+                  controller: _prepTimeController,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("Prep Time (e.g., 25 mins)"),
+                  validator: (v) => v!.isEmpty ? "Prep time is required" : null,
+                ),
+                const SizedBox(height: 16),
+
+                // 4. Plant Based Toggle Widget
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: textLight.withOpacity(0.12)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: plantBased
-                                    ? const Color(0xFFC5E1A5).withValues(alpha: 0.15)
-                                    : Colors.orange.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(
-                                Icons.eco_rounded,
-                                color: plantBased ? const Color(0xFFC5E1A5) : Colors.orange[300],
-                                size: 24,
-                              ),
+                            const Text(
+                              "100% Plant-Based / Organic",
+                              style: TextStyle(fontWeight: FontWeight.bold, color: textLight, fontSize: 14),
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: plantBased
-                                          ? const Color(0xFFC5E1A5).withValues(alpha: 0.2)
-                                          : Colors.orange.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      plantBased ? 'PLANT-BASED' : 'ORGANIC / LOCAL',
-                                      style: TextStyle(
-                                        color: plantBased ? const Color(0xFFC5E1A5) : Colors.orange[200],
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(item['title'], style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Ingredients: ${item['ingredients']}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, fontStyle: FontStyle.italic),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    item['instructions'],
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF8A80)),
-                              onPressed: () => _deleteRecipe(item['id']),
-                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "Helps lower food carbon footprint",
+                              style: TextStyle(color: textLight.withOpacity(0.4), fontSize: 11),
+                            )
                           ],
                         ),
                       ),
-                    );
-                  },
+                      Switch(
+                        value: _isPlantBased,
+                        activeColor: forest,
+                        activeTrackColor: sand,
+                        inactiveThumbColor: textLight.withOpacity(0.4),
+                        inactiveTrackColor: Colors.white.withOpacity(0.08),
+                        onChanged: (val) => setState(() => _isPlantBased = val),
+                      )
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+
+                // 5. Carbon Impact Dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedCarbonImpact,
+                  dropdownColor: cardBg,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("Carbon Impact"),
+                  items: _carbonImpacts.map((ci) {
+                    return DropdownMenuItem(value: ci, child: Text("$ci Impact"));
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedCarbonImpact = val!),
+                ),
+                const SizedBox(height: 16),
+
+                // 6. App Icon Dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedIcon,
+                  dropdownColor: cardBg,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("App Icon"),
+                  items: _icons.keys.map((iconKey) {
+                    return DropdownMenuItem(
+                      value: iconKey,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_icons[iconKey], color: sand, size: 18),
+                          const SizedBox(width: 8),
+                          Text(iconKey.replaceAll('_', ' ')),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedIcon = val!),
+                ),
+                const SizedBox(height: 16),
+
+                // 7. Ingredients (Comma Separated)
+                TextFormField(
+                  controller: _ingredientsController,
+                  maxLines: 3,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("Ingredients (Comma separated: Oats, Milk, Berries)"),
+                  validator: (v) => v!.isEmpty ? "Please add ingredients" : null,
+                ),
+                const SizedBox(height: 16),
+
+                // 8. Cooking Instructions (Comma Separated)
+                TextFormField(
+                  controller: _instructionsController,
+                  maxLines: 4,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("Cooking Instructions (Comma separated per step)"),
+                  validator: (v) => v!.isEmpty ? "Please add steps" : null,
+                ),
+                const SizedBox(height: 16),
+
+                // 9. Eco Benefit Info Text Field
+                TextFormField(
+                  controller: _ecoBenefitController,
+                  maxLines: 3,
+                  style: const TextStyle(color: textLight),
+                  decoration: _inputStyle("Eco-Benefit (Why this is good for planet?)"),
+                  validator: (v) => v!.isEmpty ? "Please add sustainable details" : null,
+                ),
+                const SizedBox(height: 28),
+
+                // Actions: Cancel & Share Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(color: textLight.withOpacity(0.8), fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5E8570), // Sage green accent button
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: _saveRecipeToDb,
+                      icon: const Text(
+                        "Share Recipe",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      label: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                    )
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDialog,
-        backgroundColor: sage,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int) onNavigate;
@@ -9,8 +11,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // Database logic removed: Using clean static mock values
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final int _completedChallengesCount = 4;
   final double _latestCarbonFootprint = 12.4;
   String _tipOfTheDay = "Avoid single-use plastics. Switch to a reusable bag and a steel water bottle!";
@@ -26,10 +27,22 @@ class _HomeScreenState extends State<HomeScreen> {
     "Choose products with minimal packaging or buy in bulk to reduce waste.",
   ];
 
+  late final AnimationController _entranceController;
+
   @override
   void initState() {
     super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..forward();
     _getRandomTip();
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
   }
 
   void _getRandomTip() {
@@ -38,10 +51,23 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Widget _staggered(int index, Widget child, {int totalSteps = 8}) {
+    final start = (index * (0.6 / totalSteps)).clamp(0.0, 0.7);
+    final anim = CurvedAnimation(
+      parent: _entranceController,
+      curve: Interval(start, (start + 0.4).clamp(0.0, 1.0), curve: Curves.easeOutCubic),
+    );
+    return FadeTransition(
+      opacity: anim,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(anim),
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: Colors.transparent, // Keeps the dashboard gradient fluid
       body: SingleChildScrollView(
@@ -50,56 +76,63 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // EcoWise Header logo and banner
-            Center(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.spa, color: theme.colorScheme.primary, size: 28),
-                      const SizedBox(width: 6),
-                      Text(
-                        "EcoWise",
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
+            // ── Header ────────────────────────────────────────────
+            _staggered(
+              0,
+              Center(
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.spa_rounded, color: AppColors.sand, size: 28),
+                        const SizedBox(width: 6),
+                        const Text(
+                          "EcoWise",
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    "Sustainable Lifestyle",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black54,
-                      letterSpacing: 1.1,
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      "Sustainable Lifestyle",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.65),
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              totalSteps: 8,
             ),
             const SizedBox(height: 24),
 
-            // Carbon Card Link
-            TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 800),
-              builder: (context, opacity, child) {
-                return Opacity(
-                  opacity: opacity,
-                  child: Card(
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.08), width: 1.5),
-                    ),
-                    child: InkWell(
-                      onTap: () => widget.onNavigate(1), // Index 1: Carbon Tracker Screen
-                      borderRadius: BorderRadius.circular(24),
+            // ── Carbon Card ───────────────────────────────────────
+            _staggered(
+              1,
+              _HoverScale(
+                onTap: () => widget.onNavigate(1),
+                scaleAmount: 0.98,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                        boxShadow: [
+                          BoxShadow(color: AppColors.forest.withValues(alpha: 0.25), blurRadius: 18, offset: const Offset(0, 8)),
+                        ],
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
                         child: Column(
@@ -110,53 +143,54 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 const Text(
                                   "Your Carbon",
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withOpacity(0.1),
+                                    color: AppColors.sand.withValues(alpha: 0.22),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
                                     "${_latestCarbonFootprint.toStringAsFixed(1)} kg CO2e",
-                                    style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                                    style: const TextStyle(color: AppColors.sand, fontWeight: FontWeight.bold, fontSize: 12),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               "Weekly average of CO2 emissions generated. Lower your score by completing green tasks.",
-                              style: TextStyle(color: Colors.black54, fontSize: 13, height: 1.4),
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.4),
                             ),
                             const SizedBox(height: 16),
                             CustomPaint(
                               size: const Size(double.infinity, 60),
-                              painter: SplineGraphPainter(color: theme.colorScheme.primary),
+                              painter: SplineGraphPainter(color: AppColors.sand),
                             ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                );
-              },
+                ),
+              ),
+              totalSteps: 8,
             ),
             const SizedBox(height: 24),
 
-            // Title "Your Activities"
-            Text(
-              "Your Activities",
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            // ── "Your Activities" title ──────────────────────────
+            _staggered(
+              2,
+              const Text(
+                "Your Activities",
+                style: TextStyle(fontSize: 18.5, fontWeight: FontWeight.bold, color: Colors.white),
               ),
+              totalSteps: 8,
             ),
             const SizedBox(height: 12),
 
-            // Mapped Activities Grid according to your DashboardShell Index Rules
+            // ── Activity grid — each card staggers in individually ──
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -165,86 +199,115 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
               children: [
-                _buildActivityCard(
-                  context,
-                  "Green Tasks",
-                  "$_completedChallengesCount completed",
-                  Icons.emoji_events,
-                  Colors.green.shade600,
-                      () => widget.onNavigate(2), // Correct Shell Index 2: Challenges
+                _staggered(
+                  3,
+                  _buildActivityCard(
+                    "Green Tasks",
+                    "$_completedChallengesCount completed",
+                    Icons.emoji_events_rounded,
+                    const Color(0xFF8BC98E),
+                        () => widget.onNavigate(2),
+                  ),
+                  totalSteps: 8,
                 ),
-                _buildActivityCard(
-                  context,
-                  "Community",
-                  "join top forums",
-                  Icons.groups,
-                  Colors.teal.shade600,
-                      () => widget.onNavigate(3), // Correct Shell Index 3: Forum
+                _staggered(
+                  4,
+                  _buildActivityCard(
+                    "Community",
+                    "join top forums",
+                    Icons.groups_rounded,
+                    const Color(0xFF7FCDCD),
+                        () => widget.onNavigate(3),
+                  ),
+                  totalSteps: 8,
                 ),
-                _buildActivityCard(
-                  context,
-                  "Green Travel",
-                  "calculate tips",
-                  Icons.electric_car,
-                  Colors.lightGreen.shade700,
-                      () => widget.onNavigate(8), // Correct Shell Index 8: Energy & Travel Hub
+                _staggered(
+                  5,
+                  _buildActivityCard(
+                    "Green Travel",
+                    "calculate tips",
+                    Icons.electric_car_rounded,
+                    const Color(0xFFAED581),
+                        () => widget.onNavigate(8),
+                  ),
+                  totalSteps: 8,
                 ),
-                _buildActivityCard(
-                  context,
-                  "Alternatives",
-                  "eco alternatives",
-                  Icons.shopping_bag_outlined,
-                  Colors.orange.shade600,
-                      () => widget.onNavigate(4), // Correct Shell Index 4: Products Screen
+                _staggered(
+                  6,
+                  _buildActivityCard(
+                    "Alternatives",
+                    "eco alternatives",
+                    Icons.shopping_bag_outlined,
+                    AppColors.sand,
+                        () => widget.onNavigate(4),
+                  ),
+                  totalSteps: 8,
                 ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Tips Section
-            Card(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
+            // ── Tip of the Day ────────────────────────────────────
+            _staggered(
+              7,
+              ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.08), width: 1.5),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.tips_and_updates, color: theme.colorScheme.primary),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
                         children: [
-                          Text(
-                            "Eco Tip of the Day",
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.sand.withValues(alpha: 0.22),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.tips_and_updates_rounded, color: AppColors.sand),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _tipOfTheDay,
-                            style: const TextStyle(fontSize: 12.5, color: Colors.black54, height: 1.35),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Eco Tip of the Day",
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _tipOfTheDay,
+                                  style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.72), height: 1.35),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _HoverScale(
+                            onTap: _getRandomTip,
+                            scaleAmount: 0.8,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.refresh_rounded, size: 19, color: Colors.white70),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, size: 20, color: Colors.black45),
-                      onPressed: _getRandomTip,
-                      tooltip: "New Tip",
-                    ),
-                  ],
+                  ),
                 ),
               ),
+              totalSteps: 8,
             ),
             const SizedBox(height: 20),
           ],
@@ -254,71 +317,101 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActivityCard(
-      BuildContext context,
       String title,
       String subtitle,
       IconData icon,
-      Color color,
+      Color accentColor,
       VoidCallback onTap,
       ) {
-    final theme = Theme.of(context);
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 600),
-      builder: (context, scale, child) {
-        return Transform.scale(
-          scale: scale,
-          child: Card(
-            color: Colors.white,
-            margin: EdgeInsets.zero,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
+    return _HoverScale(
+      onTap: onTap,
+      scaleAmount: 0.95,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.08), width: 1.5),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
             ),
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(icon, color: color, size: 26),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(13),
                     ),
-                    const Spacer(),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
+                    child: Icon(icon, color: accentColor, size: 24),
+                  ),
+                  const Spacer(),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15.5,
+                      color: Colors.white,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: Colors.black45,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: Colors.white.withValues(alpha: 0.6),
                     ),
-                  ],
-                ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+}
+
+/// Press-scale wrapper — mobile "hover" feedback, tap-down shrinks
+/// then springs back with an easeOut curve.
+class _HoverScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final double scaleAmount;
+
+  const _HoverScale({
+    required this.child,
+    required this.onTap,
+    this.scaleAmount = 0.95,
+  });
+
+  @override
+  State<_HoverScale> createState() => _HoverScaleState();
+}
+
+class _HoverScaleState extends State<_HoverScale> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _scale = widget.scaleAmount),
+      onTapUp: (_) => setState(() => _scale = 1.0),
+      onTapCancel: () => setState(() => _scale = 1.0),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
     );
   }
 }
@@ -337,7 +430,7 @@ class SplineGraphPainter extends CustomPainter {
 
     final paintGradient = Paint()
       ..shader = LinearGradient(
-        colors: [color.withOpacity(0.2), color.withOpacity(0.0)],
+        colors: [color.withValues(alpha: 0.25), color.withValues(alpha: 0.0)],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
       ).createShader(Rect.fromLTRB(0, 0, size.width, size.height));

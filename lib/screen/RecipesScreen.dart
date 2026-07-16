@@ -26,16 +26,34 @@ class Recipe {
   });
 
   factory Recipe.fromMap(Map<String, dynamic> map) {
+    // Ingredients ko safely parse karne ke liye check
+    List<String> parsedIngredients = [];
+    if (map['ingredients_csv'] != null) {
+      final rawIngredients = map['ingredients_csv'].toString();
+      parsedIngredients = rawIngredients.contains(',')
+          ? rawIngredients.split(',')
+          : [rawIngredients];
+    }
+
+    // Instructions ko safely parse karne ke liye check
+    List<String> parsedInstructions = [];
+    if (map['instructions_csv'] != null) {
+      final rawInstructions = map['instructions_csv'].toString();
+      parsedInstructions = rawInstructions.contains(',')
+          ? rawInstructions.split(',')
+          : [rawInstructions];
+    }
+
     return Recipe(
-      id: map['id'] as int,
-      title: map['title'] as String,
-      category: map['category'] as String,
-      carbonImpact: map['carbon_impact'] as String,
-      preparationTime: map['prep_time'] as String,
-      ingredients: (map['ingredients_csv'] as String).split(','),
-      instructions: (map['instructions_csv'] as String).split(','),
-      ecoBenefit: map['eco_benefit'] as String,
-      iconName: map['icon_name'] as String,
+      id: map['id'] is int ? map['id'] as int : int.tryParse(map['id'].toString()) ?? 0,
+      title: map['title']?.toString() ?? 'No Title',
+      category: map['category']?.toString() ?? 'General',
+      carbonImpact: map['carbon_impact']?.toString() ?? 'Low',
+      preparationTime: map['prep_time']?.toString() ?? 'N/A',
+      ingredients: parsedIngredients,
+      instructions: parsedInstructions,
+      ecoBenefit: map['eco_benefit']?.toString() ?? 'Eco-friendly recipe.',
+      iconName: map['icon_name']?.toString() ?? 'bowl_food',
     );
   }
 }
@@ -84,19 +102,19 @@ class _RecipesScreenState extends State<RecipesScreen> with SingleTickerProvider
     super.dispose();
   }
 
-  // Future<void> _loadRecipes() async {
-  //   final list = await DatabaseHelper.instance.getRecipes();
-  //   setState(() {
-  //     _recipes = list.map((m) => Recipe.fromMap(m)).toList();
-  //     _isLoading = false;
-  //   });
-  // }
   Future<void> _loadRecipes() async {
-    final list = await DatabaseHelper.instance.fetchRecipes(); // 'getRecipes' ki jagah 'fetchRecipes' kiya
-    setState(() {
-      _recipes = list.map((m) => Recipe.fromMap(m)).toList();
-      _isLoading = false;
-    });
+    try {
+      final list = await DatabaseHelper.instance.fetchRecipes();
+      setState(() {
+        _recipes = list.map((m) => Recipe.fromMap(m)).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error loading recipes: $e");
+      setState(() {
+        _isLoading = false; // Error aane par bhi loading screen band ho jaye
+      });
+    }
   }
 
   IconData _getIconData(String name) {
@@ -231,19 +249,25 @@ class _RecipesScreenState extends State<RecipesScreen> with SingleTickerProvider
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: forest, letterSpacing: -0.2),
                     ),
                     const SizedBox(height: 10),
-                    ...recipe.ingredients.map((ing) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.eco_rounded, size: 14, color: sage),
-                          const SizedBox(width: 10),
-                          Text(
-                            ing.trim(),
-                            style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    )),
+                    recipe.ingredients.isEmpty
+                        ? const Text("No ingredients listed.")
+                        : Column(
+                      children: recipe.ingredients.map((ing) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5.0),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.eco_rounded, size: 14, color: sage),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                ing.trim(),
+                                style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )).toList(),
+                    ),
                     const SizedBox(height: 24),
 
                     // Instructions
@@ -252,33 +276,37 @@ class _RecipesScreenState extends State<RecipesScreen> with SingleTickerProvider
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: forest, letterSpacing: -0.2),
                     ),
                     const SizedBox(height: 12),
-                    ...recipe.instructions.asMap().entries.map((entry) {
-                      final stepNumber = entry.key + 1;
-                      final stepText = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              radius: 12,
-                              backgroundColor: sage,
-                              child: Text(
-                                "$stepNumber",
-                                style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                    recipe.instructions.isEmpty
+                        ? const Text("No steps listed.")
+                        : Column(
+                      children: recipe.instructions.asMap().entries.map((entry) {
+                        final stepNumber = entry.key + 1;
+                        final stepText = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                backgroundColor: sage,
+                                child: Text(
+                                  "$stepNumber",
+                                  style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                stepText.trim(),
-                                style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  stepText.trim(),
+                                  style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
                     const SizedBox(height: 32),
 
                     // Premium Theme Button
@@ -368,7 +396,7 @@ class _RecipesScreenState extends State<RecipesScreen> with SingleTickerProvider
         ),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Background transparent kiya gradients ke liye
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -424,7 +452,8 @@ class _RecipesScreenState extends State<RecipesScreen> with SingleTickerProvider
                   ),
                 ),
 
-                // Categories chips in Custom Sand Highlighting style
+                // Categories chips
+                // Categories chips - Fixed background and text visibility
                 SizedBox(
                   height: 42,
                   child: ListView.builder(
@@ -436,28 +465,39 @@ class _RecipesScreenState extends State<RecipesScreen> with SingleTickerProvider
                       final isSelected = _selectedCategory == cat;
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                        child: ChoiceChip(
-                          label: Text(cat),
-                          selected: isSelected,
-                          selectedColor: sand,
-                          backgroundColor: Colors.white.withOpacity(0.12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          side: isSelected
-                              ? BorderSide(color: sand, width: 1.5)
-
-                              : BorderSide(
-                            color: isSelected ? sand : Colors.white.withOpacity(0.2),
-                            width: 1,
-                          ),
-                          labelStyle: TextStyle(
-                            color: isSelected ? forest : Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          onSelected: (selected) {
-                            if (selected) {
-                              setState(() => _selectedCategory = cat);
-                            }
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _selectedCategory = cat);
                           },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? sand : Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected ? sand : Colors.white.withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isSelected) ...[
+                                  const Icon(Icons.check, size: 16, color: forest),
+                                  const SizedBox(width: 6),
+                                ],
+                                Text(
+                                  cat,
+                                  style: TextStyle(
+                                    color: isSelected ? forest : Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       );
                     },
@@ -524,7 +564,7 @@ class _RecipesScreenState extends State<RecipesScreen> with SingleTickerProvider
               ],
             ),
 
-            // TAB 2: Weekly Schedule (Sleek Theme Matched List)
+            // TAB 2: Weekly Schedule
             ListView.builder(
               padding: const EdgeInsets.all(16.0),
               itemCount: _weeklyPlan.length,

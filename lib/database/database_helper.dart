@@ -20,13 +20,13 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4, // Updated version 4 to include Community Forum table
+      version: 5, // 🚀 Version updated to 5 to handle new Recipe fields cleanly
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
-  // Creates new tables on database upgrade without deleting old data
+  // Creates new tables or alters existing ones on database upgrade without deleting old data
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('''
@@ -87,6 +87,23 @@ class DatabaseHelper {
         )
       ''');
     }
+
+    // 🚀 AUTOMATIC UPGRADE FOR RECIPES TABLE (Version 5)
+    // Purane users ke app mein tables ko delete kiye bina ye naye columns dynamically add ho jayenge
+    if (oldVersion < 5) {
+      try {
+        await db.execute("ALTER TABLE recipes ADD COLUMN category TEXT;");
+        await db.execute("ALTER TABLE recipes ADD COLUMN carbon_impact TEXT;");
+        await db.execute("ALTER TABLE recipes ADD COLUMN prep_time TEXT;");
+        await db.execute("ALTER TABLE recipes ADD COLUMN ingredients_csv TEXT;");
+        await db.execute("ALTER TABLE recipes ADD COLUMN instructions_csv TEXT;");
+        await db.execute("ALTER TABLE recipes ADD COLUMN eco_benefit TEXT;");
+        await db.execute("ALTER TABLE recipes ADD COLUMN icon_name TEXT;");
+      } catch (e) {
+        // If columns already exist, prevent app crash on dynamic re-runs
+        print("Upgrade warning/info: $e");
+      }
+    }
   }
 
   // Creates all tables at once when the app is first launched
@@ -138,12 +155,18 @@ class DatabaseHelper {
       )
     ''');
 
+    // 🎯 Fully Updated Recipes Table Schema for Fresh Installs
     await db.execute('''
       CREATE TABLE recipes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
-        ingredients TEXT NOT NULL,
-        instructions TEXT NOT NULL,
+        category TEXT,
+        carbon_impact TEXT,
+        prep_time TEXT,
+        ingredients_csv TEXT,
+        instructions_csv TEXT,
+        eco_benefit TEXT,
+        icon_name TEXT,
         is_plant_based INTEGER DEFAULT 1
       )
     ''');
