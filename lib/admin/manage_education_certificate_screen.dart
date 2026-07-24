@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sustainable/database/database_helper.dart';
 import 'package:sustainable/screen/About_contactscreen.dart';
+import 'package:sustainable/screen/contactus.dart';
 // import 'package:sustainable/utils/app_colors.dart';
 
 class ManageEducationScreen extends StatefulWidget {
@@ -103,7 +104,7 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$_selectedType added successfully!'),
-          backgroundColor: AppColors.sage,
+          backgroundColor:AppColors.sage,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),

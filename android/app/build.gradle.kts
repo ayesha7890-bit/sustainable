@@ -47,3 +47,13 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+subprojects {
+    afterEvaluate {
+        if (extensions.findByName("android") != null) {
+            configure<com.android.build.gradle.BaseExtension> {
+                compileSdkVersion(36)
+            }
+        }
+    }
+}

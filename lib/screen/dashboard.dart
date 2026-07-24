@@ -67,11 +67,11 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
       ProductsScreen(),         // Index 4: Eco Alternatives
       EducationHubScreen(),     // Index 5: Eco Labels Guide
       WasteTrackerScreen(),     // Index 6: Analytics & Waste Logs
-      RecipesScreen(),          // Index 7: Meal Planner
-      TipsScreen(),             // Index 8: Energy & Travel Hub
+      RecipesScreen(),         // Index 7: Meal Planner
+      EcoTipsUserScreen(),// Index 8: Energy & Travel Hub
       EducationalScreen(),      // Index 9: Learning Hub
       ImageGalleryScreen(),     // Index 10: Photo Gallery
-      AboutUsScreen(),          // Index 11: About & Support Form
+      AboutContactScreen(), // Index 11: About & Support Form
     ];
 
     _fadeController.forward(); // Triggers first screen animation

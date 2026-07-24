@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sustainable/database/database_helper.dart';
+import '../utils/app_colors.dart';
 
 class ManageCategoriesScreen extends StatefulWidget {
   const ManageCategoriesScreen({super.key});
@@ -27,13 +29,10 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   late AnimationController _fabController;
   late Animation<double> _fabScale;
 
-  // ---- Design system ----
-  // static const Color _forest = Color(0xFF2F4A3E);
-  // static const Color _sage = Color(0xFF5E8570);
-  // static const Color _sand = Color(0xFFCBBE9C);
-  static const Color _forest= Color(0xFF0B1D3A);   // space background
-  static const Color _sage = Color(0xFF1B6CA8);   // ocean
-  static const Color _sand = Color(0xFF3E8E5A); // land
+  // ── Aapki Real Identity Theme ───────────────────────────────────
+  static const Color _forest = AppColors.forest;
+  static const Color _sage = AppColors.sage;
+  static const Color _sand = AppColors.sand;
 
   static const _bgGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -118,9 +117,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
 
       if (dialogContext.mounted) Navigator.pop(dialogContext);
       await _refreshCategories();
-      _showSnack(wasEditing
-          ? 'Category updated! '
-          : 'Category add! ');
+      _showSnack(wasEditing ? 'Category updated!' : 'Category added!');
     } catch (e) {
       debugPrint('Save category error: $e');
       if (dialogContext.mounted) {
@@ -140,7 +137,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     if (confirm != true) return;
 
     await DatabaseHelper.instance.deleteCategory(category['id']);
-    _showSnack('Category delete ! 🗑️');
+    _showSnack('Category deleted! 🗑️');
     _refreshCategories();
   }
 
@@ -154,7 +151,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
         .toList();
 
     if (rawNames.isEmpty) {
-      _showSnack('no valid category name.', isError: true);
+      _showSnack('No valid category name.', isError: true);
       return;
     }
 
@@ -174,7 +171,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       _bulkAddController.clear();
       if (mounted) Navigator.pop(context);
       setState(() => _isImporting = false);
-      _showSnack('$added new category added! 📥');
+      _showSnack('$added new categories added! 📥');
     } catch (e) {
       setState(() => _isImporting = false);
       _showSnack('Bulk category add fail: $e', isError: true);
@@ -182,7 +179,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   }
 
   // ---------------------------------------------------------------
-  // DIALOGS
+  // GLASSMORPHIC THEMED DIALOGS
   // ---------------------------------------------------------------
 
   void _showBulkAddDialog() {
@@ -209,21 +206,17 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Paste or type multiple names — separated by comma (,) or '
-                          'a new line.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: _forest.withValues(alpha: 0.6),
-                      ),
+                    const Text(
+                      'Paste or type multiple names — separated by comma (,) or a new line.',
+                      style: TextStyle(fontSize: 12.5, color: Colors.white70),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: _bulkAddController,
                       autofocus: true,
                       maxLines: 5,
-                      decoration: _dialogFieldDecoration(
-                          'Fruits, Vegetables, Dairy...'),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _dialogFieldDecoration('Fruits, Vegetables, Dairy...'),
                     ),
                   ],
                 ),
@@ -231,10 +224,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: Text('Cancel',
-                      style: TextStyle(color: _forest.withValues(alpha: 0.6))),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
                 ),
-                _gradientDialogButton(
+                _glassDialogButton(
                   label: 'Add All',
                   icon: _isImporting ? null : Icons.check_rounded,
                   isLoading: _isImporting,
@@ -261,19 +253,18 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
         title: 'Delete Category?',
         content: Text(
           'Are you sure you want to delete "$name"?',
-          style: TextStyle(color: _forest.withValues(alpha: 0.75)),
+          style: const TextStyle(color: Colors.white),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel',
-                style: TextStyle(color: _forest.withValues(alpha: 0.6))),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              backgroundColor: Colors.redAccent.withOpacity(0.8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
@@ -307,8 +298,8 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
               child: TextFormField(
                 controller: _categoryNameController,
                 autofocus: true,
-                decoration: _dialogFieldDecoration('Category Name',
-                    icon: Icons.label_outline_rounded),
+                style: const TextStyle(color: Colors.white),
+                decoration: _dialogFieldDecoration('Category Name', icon: Icons.label_outline_rounded),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Name is required'
                     : null,
@@ -321,10 +312,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                   _editingId = null;
                   Navigator.pop(dialogContext);
                 },
-                child: Text('Cancel',
-                    style: TextStyle(color: _forest.withValues(alpha: 0.6))),
+                child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
               ),
-              _gradientDialogButton(
+              _glassDialogButton(
                 label: category == null ? 'Save' : 'Update',
                 icon: Icons.check_rounded,
                 onTap: () => _saveCategory(dialogContext),
@@ -342,51 +332,58 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     required Widget content,
     required List<Widget> actions,
   }) {
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [_forest, _sage]),
-              shape: BoxShape.circle,
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      child: AlertDialog(
+        backgroundColor: _forest.withOpacity(0.85),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: _sand, size: 18),
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(color: _forest, fontSize: 17),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+        content: content,
+        actions: actions,
       ),
-      content: content,
-      actions: actions,
     );
   }
 
   InputDecoration _dialogFieldDecoration(String hint, {IconData? icon}) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: icon != null ? Icon(icon, color: _sage) : null,
+      hintStyle: const TextStyle(color: Colors.white),
+      prefixIcon: icon != null ?  Icon(icon, color: _sand) : null,
       filled: true,
-      fillColor: _sand.withValues(alpha: 0.18),
-      border: OutlineInputBorder(
+      fillColor: Colors.white.withOpacity(0.08),
+      enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _sage, width: 1.5),
+        borderSide: const BorderSide(color: _sand, width: 1.5),
       ),
     );
   }
 
-  Widget _gradientDialogButton({
+  Widget _glassDialogButton({
     required String label,
     IconData? icon,
     bool isLoading = false,
@@ -395,10 +392,11 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [_forest, _sage]),
+          color: Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -413,9 +411,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                 ),
               )
             else if (icon != null)
-              Icon(icon, color: Colors.white, size: 18),
+               Icon(icon, color: _sand, size: 16),
             const SizedBox(width: 6),
-            Text(label, style: const TextStyle(color: Colors.white)),
+            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -427,7 +425,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.redAccent : _forest,
+        backgroundColor: isError ? Colors.redAccent : _forest.withOpacity(0.9),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(12),
@@ -466,11 +464,11 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [_sage, _sand]),
+              color: _sand.withOpacity(0.9),
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: _forest.withValues(alpha: 0.35),
+                  color: Colors.black.withOpacity(0.2),
                   blurRadius: 14,
                   offset: const Offset(0, 6),
                 ),
@@ -479,12 +477,12 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add_rounded, color: Colors.white),
+                Icon(Icons.add_rounded, color: _forest),
                 SizedBox(width: 6),
                 Text(
                   'Add Category',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: _forest,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -550,9 +548,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
+          color: Colors.white.withOpacity(0.16),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+          border: Border.all(color: Colors.white.withOpacity(0.25)),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
@@ -564,9 +562,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
+          color: Colors.white.withOpacity(0.16),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+          border: Border.all(color: Colors.white.withOpacity(0.25)),
         ),
         child: TextField(
           controller: _searchController,
@@ -637,9 +635,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
+        color: Colors.white.withOpacity(0.14),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        border: Border.all(color: Colors.white.withOpacity(0.22)),
       ),
       child: Row(
         children: [
@@ -696,8 +694,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: (isDanger ? Colors.redAccent : Colors.white)
-              .withValues(alpha: 0.18),
+          color: (isDanger ? Colors.redAccent : Colors.white).withOpacity(0.18),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -727,7 +724,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
+                  color: Colors.white.withOpacity(0.14),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

@@ -34,6 +34,7 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
   }
 
   void _loadTips() async {
+    // Schema breakdown ke mutabik dynamic content load[cite: 1]
     final data = await DatabaseHelper.instance.fetchTravelTips();
     setState(() {
       _tips = data;
@@ -64,152 +65,162 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
   }
 
   void _saveTip() async {
+    // Core capabilities ke mutabik local insertion logic[cite: 1]
     await DatabaseHelper.instance.insertTravelTip({
       'category': _selectedCategory,
-      'title': _titleController.text,
-      'description': _descController.text,
+      'title': _titleController.text.trim(),
+      'description': _descController.text.trim(),
     });
 
+    if (!mounted) return;
+    Navigator.pop(context); // Dialog pehle close hoga safely
+
+    // UI states clear taaki agla text fresh aaye
     _titleController.clear();
     _descController.clear();
 
-    if (!mounted) return;
-    Navigator.pop(context);
-    _loadTips();
+    _loadTips(); // Reload standard database structure[cite: 1]
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$_selectedCategory tip completed '),
+        content: Text('🎉 $_selectedCategory tip added successfully!'),
         backgroundColor: sage,
       ),
     );
   }
 
   void _deleteTip(int id) async {
+    // CRUD methods implementation[cite: 1]
     await DatabaseHelper.instance.deleteTravelTip(id);
     _loadTips();
   }
 
   void _showAddDialog() {
+    // Controllers ko reset kar rahe hain naye dialog interaction ke liye
+    _titleController.clear();
+    _descController.clear();
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: '',
+      barrierLabel: 'Dismiss',
       barrierColor: Colors.black.withValues(alpha: 0.65),
       transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
+      pageBuilder: (context, anim1, anim2) {
+        // UI rendering logic shifted to pageBuilder for flawless layout tree
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Form(
+              key: _formKey,
+              child: AlertDialog(
+                backgroundColor: glassBg.withValues(alpha: 0.98),
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
+                ),
+                title: const Row(
+                  children: [
+                    Icon(Icons.wb_incandescent_rounded, color: sand, size: 22),
+                    SizedBox(width: 10),
+                    Text(
+                      'Add Eco Guide/Tip',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                  ],
+                ),
+                content: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.9,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedCategory,
+                              dropdownColor: glassBg,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                              decoration: const InputDecoration(border: InputBorder.none),
+                              items: ['Travel', 'Energy', 'Waste'].map((cat) {
+                                return DropdownMenuItem(
+                                  value: cat,
+                                  child: Text('$cat Guide'),
+                                );
+                              }).toList(),
+                              onChanged: (v) {
+                                setDialogState(() {
+                                  _selectedCategory = v!;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _buildGlassField(
+                          controller: _titleController,
+                          label: 'Guide Title (e.g., Carpooling Perks)',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildGlassField(
+                          controller: _descController,
+                          label: 'Detailed Recommendation/Tip',
+                          maxLines: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 12),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold)),
+                  ),
+                  Material(
+                    color: sage,
+                    borderRadius: BorderRadius.circular(14),
+                    elevation: 4,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () {
+                        FocusScope.of(context).unfocus();
+                        if (_formKey.currentState!.validate()) {
+                          _saveTip();
+                        }
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Publish', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            SizedBox(width: 6),
+                            Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
       transitionBuilder: (context, anim, secondaryAnimation, child) {
         final curvedValue = Curves.easeOutBack.transform(anim.value);
         return Transform.scale(
           scale: curvedValue,
           child: Opacity(
             opacity: anim.value,
-            child: StatefulBuilder(
-              builder: (context, setDialogState) {
-                return Form(
-                  key: _formKey,
-                  child: AlertDialog(
-                    backgroundColor: glassBg.withValues(alpha: 0.98),
-                    insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                      side: BorderSide(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
-                    ),
-                    title: const Row(
-                      children: [
-                        Icon(Icons.wb_incandescent_rounded, color: sand, size: 22),
-                        SizedBox(width: 10),
-                        Text(
-                          'Add Eco Guide/Tip',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
-                      ],
-                    ),
-                    content: SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.9,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Dropdown for Category Selection
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedCategory,
-                                  dropdownColor: glassBg,
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                                  decoration: const InputDecoration(border: InputBorder.none),
-                                  items: ['Travel', 'Energy', 'Waste'].map((cat) {
-                                    return DropdownMenuItem(
-                                      value: cat,
-                                      child: Text('$cat Guide'),
-                                    );
-                                  }).toList(),
-                                  onChanged: (v) {
-                                    setDialogState(() {
-                                      _selectedCategory = v!;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _buildGlassField(
-                              controller: _titleController,
-                              label: 'Guide Title (e.g., Carpooling Perks)',
-                            ),
-                            const SizedBox(height: 12),
-                            _buildGlassField(
-                              controller: _descController,
-                              label: 'Detailed Recommendation/Tip',
-                              maxLines: 4,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 12),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold)),
-                      ),
-                      Material(
-                        color: sage,
-                        borderRadius: BorderRadius.circular(14),
-                        elevation: 4,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            FocusScope.of(context).unfocus();
-                            if (_formKey.currentState!.validate()) {
-                              _saveTip();
-                            }
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('Publish', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                SizedBox(width: 6),
-                                Icon(Icons.send_rounded, size: 16, color: Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+            child: child,
           ),
         );
       },
@@ -287,7 +298,7 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
                   itemCount: _tips.length,
                   itemBuilder: (context, index) {
                     final item = _tips[index];
-                    final cat = item['category'];
+                    final cat = item['category'] ?? 'Travel';
                     return _staggered(
                       index,
                       Container(
@@ -314,12 +325,12 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
-                                    child: Text(cat.toUpperCase(), style: TextStyle(color: _getColor(cat), fontSize: 8, fontWeight: FontWeight.bold)),
+                                    child: Text(cat.toString().toUpperCase(), style: TextStyle(color: _getColor(cat), fontSize: 8, fontWeight: FontWeight.bold)),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(item['title'], style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                                  Text(item['title'] ?? 'No Title', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 3),
-                                  Text(item['description'], maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+                                  Text(item['description'] ?? 'No Description', maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
                                 ],
                               ),
                             ),

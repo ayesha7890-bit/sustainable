@@ -1,17 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:sustainable/admin/manage_challenges_screen.dart';
 import 'package:sustainable/admin/manage_education_certificate_screen.dart';
 import 'package:sustainable/admin/manage_recipes_screen.dart';
+import 'package:sustainable/admin/manage_tips_screen.dart';
 import 'package:sustainable/admin/manage_travel_screen.dart';
+import 'package:sustainable/welcome.dart';
 
 import 'manage_categories_screen.dart';
 import 'manage_products_screen.dart';
-// import 'manage_challenges_screen.dart';
-// import 'manage_certifications_screen.dart';
-// import 'manage_recipes_screen.dart';
-// import 'manage_tips_screen.dart';
-// import 'manage_travel_screen.dart';
-// import 'manage_education_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -34,32 +31,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       title: 'Products',
       icon: Icons.eco_rounded,
       screenBuilder: () => const ManageProductsScreen(),
-
     ),
     _AdminModule(
       title: 'Challenges',
       icon: Icons.flag_rounded,
-      screenBuilder:()=>const ManageChallengesScreen(),
+      screenBuilder: () => const ManageChallengesScreen(),
     ),
     _AdminModule(
       title: 'Certifications',
       icon: Icons.verified_rounded,
-      screenBuilder: ()=>const ManageEducationScreen(),
+      screenBuilder: () => const ManageEducationScreen(),
     ),
     _AdminModule(
       title: 'Recipes',
       icon: Icons.restaurant_menu_rounded,
-      screenBuilder: ()=>const AdminAddRecipeScreen(),
+      screenBuilder: () => const AdminAddRecipeScreen(),
     ),
     _AdminModule(
       title: 'Energy Tips',
       icon: Icons.bolt_rounded,
-      screenBuilder: null,
+      screenBuilder: () => const ManageTipsScreen(),
+
     ),
     _AdminModule(
       title: 'Eco-Travel',
       icon: Icons.travel_explore_rounded,
-      screenBuilder: ()=>const ManageTravelScreen(),
+      screenBuilder: () => const ManageTravelScreen(),
     ),
     _AdminModule(
       title: 'Education',
@@ -100,8 +97,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
   }
 
+  // ─── ✨ LOGOUT LOGIC (PURE & CLEAN) ───────────────────────────────────
   void _logout() {
-    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+          (route) => false, // Yeh poore navigation stack ko clear kar dega
+    );
   }
 
   @override
@@ -124,8 +125,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header Row
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -140,6 +142,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        SizedBox(height: 2),
                         Text(
                           'Sustainable Living Guide',
                           style: TextStyle(
@@ -149,6 +152,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         ),
                       ],
                     ),
+                    // Glassmorphic Rounded Logout Button
                     _LogoutButton(onTap: _logout),
                   ],
                 ),
@@ -232,9 +236,6 @@ class _ModuleCardState extends State<_ModuleCard>
     _pressController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 120),
-      lowerBound: 0.0,
-      upperBound: 1.0,
-      value: 0.0,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.94).animate(
       CurvedAnimation(parent: _pressController, curve: Curves.easeOut),
@@ -264,10 +265,10 @@ class _ModuleCardState extends State<_ModuleCard>
         },
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
+            color: Colors.white.withOpacity(0.14),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: Colors.white.withOpacity(0.25),
               width: 1,
             ),
           ),
@@ -277,7 +278,7 @@ class _ModuleCardState extends State<_ModuleCard>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: Colors.white.withOpacity(0.18),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -304,6 +305,7 @@ class _ModuleCardState extends State<_ModuleCard>
   }
 }
 
+// ─── 🔘 ROUNDED LOGOUT BUTTON WIDGET ──────────────────────────────────
 class _LogoutButton extends StatefulWidget {
   final VoidCallback onTap;
   const _LogoutButton({required this.onTap});
@@ -324,7 +326,9 @@ class _LogoutButtonState extends State<_LogoutButton>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.94).animate(_controller);
+    _scale = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
   }
 
   @override
@@ -347,13 +351,17 @@ class _LogoutButtonState extends State<_LogoutButton>
           child: child,
         ),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.16),
+            color: Colors.white.withOpacity(0.15),
             shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withOpacity(0.25),
+              width: 1,
+            ),
           ),
           child: const Icon(
-            Icons.logout_rounded,
+            Icons.logout_rounded, // Pure rounded logout icon
             color: Colors.white,
             size: 22,
           ),

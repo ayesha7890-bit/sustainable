@@ -1,8 +1,9 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import '../utils/app_colors.dart';
-
+import 'package:sustainable/database/database_helper.dart';
 class HomeScreen extends StatefulWidget {
   final Function(int) onNavigate;
   const HomeScreen({super.key, required this.onNavigate});
@@ -12,21 +13,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
-  final int _completedChallengesCount = 4;
-  final double _latestCarbonFootprint = 12.4;
-  String _tipOfTheDay = "Avoid single-use plastics. Switch to a reusable bag and a steel water bottle!";
-
-  final List<String> _tips = [
-    "Avoid single-use plastics. Switch to a reusable bag and a steel water bottle!",
-    "Unplug electronics when not in use. Standby power accounts for 5-10% of home energy use.",
-    "A plant-based meal once a week saves water, land use, and greenhouse gases.",
-    "Wash clothes in cold water to save up to 90% of the energy used by washing machines.",
-    "Carpool, use public transit, or ride a bicycle to reduce transportation footprint.",
-    "Compost organic waste. Food waste in landfills produces harmful methane gas.",
-    "Lower your thermostat by 1-2 degrees in winter and raise it in summer to save energy bills.",
-    "Choose products with minimal packaging or buy in bulk to reduce waste.",
-  ];
-
   late final AnimationController _entranceController;
 
   @override
@@ -36,19 +22,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..forward();
-    _getRandomTip();
   }
 
   @override
   void dispose() {
     _entranceController.dispose();
     super.dispose();
-  }
-
-  void _getRandomTip() {
-    setState(() {
-      _tipOfTheDay = _tips[Random().nextInt(_tips.length)];
-    });
   }
 
   Widget _staggered(int index, Widget child, {int totalSteps = 8}) {
@@ -69,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // Keeps the dashboard gradient fluid
+      backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(18.0),
@@ -80,58 +59,36 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _staggered(
               0,
               Center(
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.spa_rounded, color: AppColors.sand, size: 28),
-                        const SizedBox(width: 6),
-                        const Text(
-                          "EcoWise",
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
+                    const Icon(Icons.spa_rounded, color: AppColors.sand, size: 28),
+                    const SizedBox(width: 6),
+                    const Text(
                       "Sustainable Lifestyle",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.65),
-                        letterSpacing: 1.1,
-                      ),
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ],
                 ),
               ),
-              totalSteps: 8,
             ),
             const SizedBox(height: 24),
 
-            // ── Carbon Card ───────────────────────────────────────
+            // ── Carbon Card (Static Placeholder for SQLite context) ──
             _staggered(
               1,
               _HoverScale(
                 onTap: () => widget.onNavigate(1),
-                scaleAmount: 0.98,
+                // scaleAmount: 0.98,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.10),
+                        color: Colors.white.withOpacity(0.10),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-                        boxShadow: [
-                          BoxShadow(color: AppColors.forest.withValues(alpha: 0.25), blurRadius: 18, offset: const Offset(0, 8)),
-                        ],
+                        border: Border.all(color: Colors.white.withOpacity(0.16)),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
@@ -141,33 +98,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  "Your Carbon",
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                                ),
+                                const Text("Your Carbon", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.sand.withValues(alpha: 0.22),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    "${_latestCarbonFootprint.toStringAsFixed(1)} kg CO2e",
-                                    style: const TextStyle(color: AppColors.sand, fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
+                                  decoration: BoxDecoration(color: AppColors.sand.withOpacity(0.22), borderRadius: BorderRadius.circular(12)),
+                                  child: const Text("0.0 kg CO2e", style: TextStyle(color: AppColors.sand, fontWeight: FontWeight.bold, fontSize: 12)),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Text(
-                              "Weekly average of CO2 emissions generated. Lower your score by completing green tasks.",
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.4),
-                            ),
+                            Text("Lower your score by completing green tasks.", style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
                             const SizedBox(height: 16),
-                            CustomPaint(
-                              size: const Size(double.infinity, 60),
-                              painter: SplineGraphPainter(color: AppColors.sand),
-                            ),
+                            CustomPaint(size: const Size(double.infinity, 60), painter: SplineGraphPainter(color: AppColors.sand)),
                           ],
                         ),
                       ),
@@ -175,22 +117,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
               ),
-              totalSteps: 8,
             ),
             const SizedBox(height: 24),
 
-            // ── "Your Activities" title ──────────────────────────
-            _staggered(
-              2,
-              const Text(
-                "Your Activities",
-                style: TextStyle(fontSize: 18.5, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              totalSteps: 8,
-            ),
+            // ── Activities ──
+            _staggered(2, const Text("Your Activities", style: TextStyle(fontSize: 18.5, fontWeight: FontWeight.bold, color: Colors.white))),
             const SizedBox(height: 12),
-
-            // ── Activity grid — each card staggers in individually ──
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -199,115 +131,96 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
               children: [
-                _staggered(
-                  3,
-                  _buildActivityCard(
-                    "Green Tasks",
-                    "$_completedChallengesCount completed",
-                    Icons.emoji_events_rounded,
-                    const Color(0xFF8BC98E),
-                        () => widget.onNavigate(2),
-                  ),
-                  totalSteps: 8,
-                ),
-                _staggered(
-                  4,
-                  _buildActivityCard(
-                    "Community",
-                    "join top forums",
-                    Icons.groups_rounded,
-                    const Color(0xFF7FCDCD),
-                        () => widget.onNavigate(3),
-                  ),
-                  totalSteps: 8,
-                ),
-                _staggered(
-                  5,
-                  _buildActivityCard(
-                    "Green Travel",
-                    "calculate tips",
-                    Icons.electric_car_rounded,
-                    const Color(0xFFAED581),
-                        () => widget.onNavigate(8),
-                  ),
-                  totalSteps: 8,
-                ),
-                _staggered(
-                  6,
-                  _buildActivityCard(
-                    "Alternatives",
-                    "eco alternatives",
-                    Icons.shopping_bag_outlined,
-                    AppColors.sand,
-                        () => widget.onNavigate(4),
-                  ),
-                  totalSteps: 8,
-                ),
+                _staggered(3, _buildActivityCard("Green Tasks", "0 completed", Icons.emoji_events_rounded, const Color(0xFF8BC98E), () => widget.onNavigate(2))),
+                _staggered(4, _buildActivityCard("Community", "join top forums", Icons.groups_rounded, const Color(0xFF7FCDCD), () => widget.onNavigate(3))),
+                _staggered(5, _buildActivityCard("Green Travel", "calculate tips", Icons.electric_car_rounded, const Color(0xFFAED581), () => widget.onNavigate(8))),
+                _staggered(6, _buildActivityCard("Alternatives", "eco alternatives", Icons.shopping_bag_outlined, AppColors.sand, () => widget.onNavigate(4))),
               ],
             ),
             const SizedBox(height: 24),
 
-            // ── Tip of the Day ────────────────────────────────────
+            // ── 📊 DYNAMIC SQLITE CAROUSEL SLIDER ──────────────────────
             _staggered(
               7,
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.sand.withValues(alpha: 0.22),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.tips_and_updates_rounded, color: AppColors.sand),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "Eco Tip of the Day",
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _tipOfTheDay,
-                                  style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.72), height: 1.35),
-                                ),
-                              ],
-                            ),
-                          ),
-                          _HoverScale(
-                            onTap: _getRandomTip,
-                            scaleAmount: 0.8,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.08),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.refresh_rounded, size: 19, color: Colors.white70),
-                            ),
-                          ),
-                        ],
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: DatabaseHelper.instance.fetchTips(), // SQLite se data fetch kar raha hai
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    // Agar database khali ho toh placeholder dikhayein
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
+                      child: const Center(
+                        child: Text("No eco tips added yet! Add from Admin Panel.", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      ),
+                    );
+                  }
+
+                  final tipsList = snapshot.data!;
+
+                  return CarouselSlider(
+                    options: CarouselOptions(
+                      height: 110,
+                      autoPlay: true,
+                      autoPlayInterval: const Duration(seconds: 4),
+                      enlargeCenterPage: true,
+                      viewportFraction: 1.0,
                     ),
-                  ),
-                ),
+                    items: tipsList.map((tip) {
+                      final String title = tip['title'] ?? 'Eco Tip';
+                      final String desc = tip['description'] ?? '';
+
+                      return Builder(
+                        builder: (BuildContext context) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                              child: Container(
+                                width: MediaQuery.of(context).size.width,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.white.withOpacity(0.16)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(color: AppColors.sand.withOpacity(0.22), shape: BoxShape.circle),
+                                        child: const Icon(Icons.tips_and_updates_rounded, color: AppColors.sand),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                            const SizedBox(height: 4),
+                                            Text(desc, style: TextStyle(fontSize: 12.5, color: Colors.white.withOpacity(0.72), height: 1.35), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }).toList(),
+                  );
+                },
               ),
-              totalSteps: 8,
             ),
             const SizedBox(height: 20),
           ],
@@ -316,59 +229,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildActivityCard(
-      String title,
-      String subtitle,
-      IconData icon,
-      Color accentColor,
-      VoidCallback onTap,
-      ) {
+  Widget _buildActivityCard(String title, String subtitle, IconData icon, Color accentColor, VoidCallback onTap) {
     return _HoverScale(
       onTap: onTap,
-      scaleAmount: 0.95,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            ),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.16))),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.20),
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Icon(icon, color: accentColor, size: 24),
-                  ),
+                  Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(color: accentColor.withOpacity(0.20), borderRadius: BorderRadius.circular(13)), child: Icon(icon, color: accentColor, size: 24)),
                   const Spacer(),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.5,
-                      color: Colors.white,
-                    ),
-                  ),
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(subtitle, style: TextStyle(fontSize: 11.5, color: Colors.white.withOpacity(0.6)), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -379,39 +259,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 }
 
-/// Press-scale wrapper — mobile "hover" feedback, tap-down shrinks
-/// then springs back with an easeOut curve.
 class _HoverScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
-  final double scaleAmount;
-
-  const _HoverScale({
-    required this.child,
-    required this.onTap,
-    this.scaleAmount = 0.95,
-  });
-
+  const _HoverScale({required this.child, required this.onTap});
   @override
   State<_HoverScale> createState() => _HoverScaleState();
 }
-
 class _HoverScaleState extends State<_HoverScale> {
   double _scale = 1.0;
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _scale = widget.scaleAmount),
+      onTapDown: (_) => setState(() => _scale = 0.95),
       onTapUp: (_) => setState(() => _scale = 1.0),
       onTapCancel: () => setState(() => _scale = 1.0),
       onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _scale,
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-        child: widget.child,
-      ),
+      child: AnimatedScale(scale: _scale, duration: const Duration(milliseconds: 140), curve: Curves.easeOut, child: widget.child),
     );
   }
 }
@@ -419,39 +283,18 @@ class _HoverScaleState extends State<_HoverScale> {
 class SplineGraphPainter extends CustomPainter {
   final Color color;
   SplineGraphPainter({required this.color});
-
   @override
   void paint(Canvas canvas, Size size) {
-    final paintLine = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
-
-    final paintGradient = Paint()
-      ..shader = LinearGradient(
-        colors: [color.withValues(alpha: 0.25), color.withValues(alpha: 0.0)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTRB(0, 0, size.width, size.height));
-
+    final paintLine = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    final paintGradient = Paint()..shader = LinearGradient(colors: [color.withOpacity(0.25), color.withOpacity(0.0)], begin: Alignment.topCenter, end: Alignment.bottomCenter).createShader(Rect.fromLTRB(0, 0, size.width, size.height));
     final path = Path();
     path.moveTo(0, size.height * 0.7);
     path.cubicTo(size.width * 0.25, size.height * 0.2, size.width * 0.5, size.height * 0.8, size.width * 0.75, size.height * 0.1);
     path.lineTo(size.width, size.height * 0.4);
-
-    final fillPath = Path.from(path);
-    fillPath.lineTo(size.width, size.height);
-    fillPath.lineTo(0, size.height);
-    fillPath.close();
-
+    final fillPath = Path.from(path)..lineTo(size.width, size.height)..lineTo(0, size.height)..close();
     canvas.drawPath(fillPath, paintGradient);
     canvas.drawPath(path, paintLine);
-
-    final dotPaint = Paint()..color = color;
-    canvas.drawCircle(Offset(size.width * 0.75, size.height * 0.1), 5, dotPaint);
   }
-
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
