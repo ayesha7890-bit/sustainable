@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 🔄 Added for Like State Persistent Management
 import '../database/database_helper.dart';
 
 class ForumScreen extends StatefulWidget {
@@ -14,6 +15,9 @@ class _ForumScreenState extends State<ForumScreen> {
   final TextEditingController _contentController = TextEditingController();
 
   List<Map<String, dynamic>> _posts = [];
+  Set<String> _likedPostIds = {
+
+  }; // 🛑 Track unique liked post IDs locally
   bool _isLoading = true;
 
   // Premium Green Theme Configuration
@@ -24,7 +28,7 @@ class _ForumScreenState extends State<ForumScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPosts();
+    _loadPostsAndLikes();
   }
 
   @override
@@ -35,12 +39,18 @@ class _ForumScreenState extends State<ForumScreen> {
     super.dispose();
   }
 
-  // ⚠️ Note: Make sure your DatabaseHelper contains getForumPosts, insertForumPost, and likeForumPost.
-  Future<void> _loadPosts() async {
+  // Load posts from database and unique like states from SharedPreferences
+  Future<void> _loadPostsAndLikes() async {
     try {
       final list = await DatabaseHelper.instance.getForumPosts();
+      final prefs = await SharedPreferences.getInstance();
+
+      // Fetch list of IDs user has already liked
+      final likedList = prefs.getStringList('user_liked_posts') ?? [];
+
       setState(() {
         _posts = list;
+        _likedPostIds = likedList.toSet();
         _isLoading = false;
       });
     } catch (e) {
@@ -77,7 +87,7 @@ class _ForumScreenState extends State<ForumScreen> {
 
     if (mounted) {
       Navigator.pop(context);
-      _loadPosts();
+      _loadPostsAndLikes();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("✨ Your green story has been shared!"),
@@ -87,9 +97,32 @@ class _ForumScreenState extends State<ForumScreen> {
     }
   }
 
-  Future<void> _likePost(int id, int currentLikes) async {
-    await DatabaseHelper.instance.likeForumPost(id, currentLikes);
-    _loadPosts();
+  // 🔥 Professional Toggle Like Feature (Ek user sirf ek hi like de sakega)
+  Future<void> _toggleLikePost(int id, int currentLikes) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String stringId = id.toString();
+
+    int newLikesCount = currentLikes;
+
+    if (_likedPostIds.contains(stringId)) {
+      // 1. Agar pehle se liked hai -> To Unlike karo (-1)
+      newLikesCount = (currentLikes > 0) ? currentLikes - 1 : 0;
+      _likedPostIds.remove(stringId);
+    } else {
+      // 2. Agar liked nahi hai -> To Like karo (+1)
+      newLikesCount = currentLikes + 1;
+      _likedPostIds.add(stringId);
+    }
+
+    // Database mein update bhejein (Aapke parameter order ke mutabik check kar lein)
+    // Agar query direct counter assign karti hai to newLikesCount bhejein, warna increment handles update.
+    await DatabaseHelper.instance.likeForumPost(id, newLikesCount);
+
+    // Local device state save karein
+    await prefs.setStringList('user_liked_posts', _likedPostIds.toList());
+
+    // UI reload karein seamlessly
+    _loadPostsAndLikes();
   }
 
   void _showCreatePostSheet(BuildContext context) {
@@ -207,10 +240,10 @@ class _ForumScreenState extends State<ForumScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text(
-            "Community Forum",
+           title: const Text(
+             "Community Forum",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+           ),
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.white))
@@ -232,6 +265,9 @@ class _ForumScreenState extends State<ForumScreen> {
             final String firstLetter = post['author'] != null && post['author'].toString().isNotEmpty
                 ? post['author'].substring(0, 1).toUpperCase()
                 : "U";
+
+            final int postId = post['id'] ?? 0;
+            final bool isLikedByMe = _likedPostIds.contains(postId.toString());
 
             return Container(
               margin: const EdgeInsets.only(bottom: 14),
@@ -288,25 +324,34 @@ class _ForumScreenState extends State<ForumScreen> {
                     children: [
                       InkWell(
                         onTap: () {
-                          final postId = post['id'];
-                          if (postId != null) {
-                            _likePost(postId, post['likes'] ?? 0);
+                          if (postId != 0) {
+                            _toggleLikePost(postId, post['likes'] ?? 0);
                           }
                         },
                         borderRadius: BorderRadius.circular(30),
-                        child: Container(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sage.withOpacity(0.15),
+                            // ❤️ Liked color transitions smoothly
+                            color: isLikedByMe ? Colors.red.withOpacity(0.15) : sage.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(30),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.thumb_up_alt_outlined, color: forest, size: 16),
+                              Icon(
+                                  isLikedByMe ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
+                                  color: isLikedByMe ? Colors.redAccent : forest,
+                                  size: 16
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 "${post['likes'] ?? 0} Likes",
-                                style: const TextStyle(fontSize: 12, color: forest, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: isLikedByMe ? Colors.redAccent : forest,
+                                    fontWeight: FontWeight.bold
+                                ),
                               ),
                             ],
                           ),

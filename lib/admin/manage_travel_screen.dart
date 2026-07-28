@@ -34,7 +34,6 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
   }
 
   void _loadTips() async {
-    // Schema breakdown ke mutabik dynamic content load[cite: 1]
     final data = await DatabaseHelper.instance.fetchTravelTips();
     setState(() {
       _tips = data;
@@ -64,41 +63,54 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
     );
   }
 
-  void _saveTip() async {
-    // Core capabilities ke mutabik local insertion logic[cite: 1]
-    await DatabaseHelper.instance.insertTravelTip({
+  // ✨ Modified Save Logic: Jo Add aur Update dono handle karegi
+  void _saveTip({int? editId}) async {
+    final tipData = {
       'category': _selectedCategory,
       'title': _titleController.text.trim(),
       'description': _descController.text.trim(),
-    });
+    };
+
+    if (editId != null) {
+      // Make sure aapke DatabaseHelper mein updateTravelTip(id, data) implemented ho
+      await DatabaseHelper.instance.updateTravelTip(editId, tipData);
+    } else {
+      await DatabaseHelper.instance.insertTravelTip(tipData);
+    }
 
     if (!mounted) return;
-    Navigator.pop(context); // Dialog pehle close hoga safely
+    Navigator.pop(context);
 
-    // UI states clear taaki agla text fresh aaye
     _titleController.clear();
     _descController.clear();
-
-    _loadTips(); // Reload standard database structure[cite: 1]
+    _loadTips();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🎉 $_selectedCategory tip added successfully!'),
+        content: Text(editId != null
+            ? '🎉 Tip updated successfully!'
+            : '🎉 $_selectedCategory tip added successfully!'),
         backgroundColor: sage,
       ),
     );
   }
 
   void _deleteTip(int id) async {
-    // CRUD methods implementation[cite: 1]
     await DatabaseHelper.instance.deleteTravelTip(id);
     _loadTips();
   }
 
-  void _showAddDialog() {
-    // Controllers ko reset kar rahe hain naye dialog interaction ke liye
-    _titleController.clear();
-    _descController.clear();
+  // ✨ Combo Dialog: Agar editMap pass hoga to Edit mode chalega
+  void _showTipDialog({Map<String, dynamic>? editMap}) {
+    if (editMap != null) {
+      _titleController.text = editMap['title'] ?? '';
+      _descController.text = editMap['description'] ?? '';
+      _selectedCategory = editMap['category'] ?? 'Travel';
+    } else {
+      _titleController.clear();
+      _descController.clear();
+      _selectedCategory = 'Travel';
+    }
 
     showGeneralDialog(
       context: context,
@@ -107,7 +119,6 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
       barrierColor: Colors.black.withValues(alpha: 0.65),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, anim1, anim2) {
-        // UI rendering logic shifted to pageBuilder for flawless layout tree
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Form(
@@ -119,13 +130,13 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
                   borderRadius: BorderRadius.circular(28),
                   side: BorderSide(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
                 ),
-                title: const Row(
+                title: Row(
                   children: [
-                    Icon(Icons.wb_incandescent_rounded, color: sand, size: 22),
-                    SizedBox(width: 10),
+                    const Icon(Icons.wb_incandescent_rounded, color: sand, size: 22),
+                    const SizedBox(width: 10),
                     Text(
-                      'Add Eco Guide/Tip',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                      editMap != null ? 'Edit Eco Guide/Tip' : 'Add Eco Guide/Tip',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                     ),
                   ],
                 ),
@@ -192,17 +203,18 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
                       onTap: () {
                         FocusScope.of(context).unfocus();
                         if (_formKey.currentState!.validate()) {
-                          _saveTip();
+                          _saveTip(editId: editMap?['id']);
                         }
                       },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Publish', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            SizedBox(width: 6),
-                            Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                            Text(editMap != null ? 'Update' : 'Publish',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 6),
+                            Icon(editMap != null ? Icons.check_circle_outline_rounded : Icons.send_rounded, size: 16, color: Colors.white),
                           ],
                         ),
                       ),
@@ -334,9 +346,19 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
                                 ],
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF8A80)),
-                              onPressed: () => _deleteTip(item['id']),
+                            // ✨ Action Buttons Row (Edit + Delete)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_rounded, color: sand, size: 26),
+                                  onPressed: () => _showTipDialog(editMap: item),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF8A80)),
+                                  onPressed: () => _deleteTip(item['id']),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -350,7 +372,7 @@ class _ManageTravelScreenState extends State<ManageTravelScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDialog,
+        onPressed: () => _showTipDialog(), // Add mode trigger
         backgroundColor: sage,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add_rounded, color: Colors.white),

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 
@@ -9,6 +10,7 @@ class Product {
   final double carbonSavedKg;
   final String description;
   final String iconName;
+  final String imageUrl; // 🔥 Image handle karne ke liye variable
   final List<String> benefits;
 
   Product({
@@ -19,6 +21,7 @@ class Product {
     required this.carbonSavedKg,
     required this.description,
     required this.iconName,
+    required this.imageUrl,
     required this.benefits,
   });
 
@@ -31,6 +34,7 @@ class Product {
       carbonSavedKg: (map['carbon_saved'] as num? ?? 25.0).toDouble(),
       description: map['description'] as String? ?? '',
       iconName: map['icon_name'] as String? ?? 'eco',
+      imageUrl: map['image_url'] as String? ?? '', // 🔥 Data fetch mapping setup
       benefits: (map['benefits_csv'] as String? ?? 'Eco Friendly,Sustainable').split(','),
     );
   }
@@ -45,13 +49,13 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   List<Product> _allProducts = [];
+  List<String> _categories = ["All"];
   bool _isLoading = true;
 
   String _searchQuery = "";
   String _selectedCategory = "All";
   String _sortBy = "Rating";
 
-  // Premium Green Theme Colors
   static const Color forest = Color(0xFF1E3A2F);
   static const Color sage = Color(0xFF5E8570);
   static const Color sand = Color(0xFFF4EAE1);
@@ -64,8 +68,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Future<void> _loadProducts() async {
     final list = await DatabaseHelper.instance.fetchProducts();
+    final fetchedProducts = list.map((m) => Product.fromMap(m)).toList();
+    final uniqueCategories = {"All", ...fetchedProducts.map((p) => p.category)};
+
     setState(() {
-      _allProducts = list.map((m) => Product.fromMap(m)).toList();
+      _allProducts = fetchedProducts;
+      _categories = uniqueCategories.toList();
       _isLoading = false;
     });
   }
@@ -106,8 +114,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ["All", "Kitchen", "Bathroom", "Travel", "Energy", "Laundry"];
-
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -122,6 +128,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.maybePop(context),
+          ),
           title: const Text(
             "Sustainable Marketplace",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -161,7 +171,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
               ),
 
-              // Sort Dropdown (Fixed styling here)
+              // Sort Dropdown (🔥 Now in clean, bright white color for strong contrast)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 2.0),
                 child: Row(
@@ -169,18 +179,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   children: [
                     const Text(
                       "Sort products by:",
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white), // White Text
                     ),
                     DropdownButton<String>(
                       value: _sortBy,
-                      dropdownColor: sand,
-                      iconEnabledColor: Colors.white,
-                      style: const TextStyle(color: forest, fontWeight: FontWeight.w600),
-                      underline: Container(height: 1.5, color: Colors.white),
+                      dropdownColor: forest, // 🔥 Dropdown background matching the dark theme
+                      iconEnabledColor: Colors.white, // White Arrow Icon
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), // White Text
+                      underline: Container(height: 1.5, color: Colors.white), // White Line
                       items: ["Rating", "Price: Low to High", "Price: High to Low", "Carbon Saved"].map((String val) {
                         return DropdownMenuItem<String>(
                           value: val,
-                          child: Text(val, style: const TextStyle(fontSize: 13, color: forest)),
+                          child: Text(val, style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)), // White Items text
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -192,32 +202,34 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ],
                 ),
               ),
-
-              // Scrollable Category Chips
+              // Scrollable Dynamic Category Chips (🔥 Contrast fixed completely)
               SizedBox(
                 height: 48,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  itemCount: categories.length,
+                  itemCount: _categories.length,
                   itemBuilder: (context, index) {
-                    final category = categories[index];
+                    final category = _categories[index];
                     final isSelected = _selectedCategory == category;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 5.0),
                       child: ChoiceChip(
                         label: Text(category),
                         selected: isSelected,
-                        selectedColor: Colors.white,
+                        selectedColor: forest,
                         disabledColor: Colors.transparent,
-                        backgroundColor: Colors.white.withOpacity(0.18),
-                        checkmarkColor: forest,
+                        backgroundColor: Colors.white.withOpacity(0.4), // Light translucent background for depth
+                        checkmarkColor: Colors.white,
                         labelStyle: TextStyle(
-                          color: isSelected ? forest : Colors.white,
+                          color: isSelected ? Colors.white : forest, // Forest text color when unselected
                           fontWeight: FontWeight.bold,
                           fontSize: 12.5,
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: isSelected ? Colors.transparent : forest.withOpacity(0.2)),
+                        ),
                         onSelected: (selected) {
                           if (selected) {
                             setState(() => _selectedCategory = category);
@@ -236,7 +248,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     ? const Center(
                   child: Text(
                     "No products found in this category.",
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    style: TextStyle(color: forest, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 )
                     : GridView.builder(
@@ -244,7 +256,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 20),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    childAspectRatio: 0.76,
+                    childAspectRatio: 0.74,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
                   ),
@@ -263,10 +275,20 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Widget _buildProductCard(BuildContext context, Product product) {
+    // 🔥 Check if custom local file image exists
+    final hasImage = product.imageUrl.isNotEmpty && File(product.imageUrl).existsSync();
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(24),
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: forest.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ]
       ),
       child: InkWell(
         onTap: () => _showProductDetails(context, product),
@@ -276,17 +298,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 🔥 Container now loads dynamic selected image files properly!
               Container(
                 width: double.infinity,
-                height: 95,
+                height: 100,
                 decoration: BoxDecoration(
                   color: sage.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(
-                  _getIconData(product.iconName),
-                  size: 38,
-                  color: forest,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: hasImage
+                      ? Image.file(File(product.imageUrl), fit: BoxFit.cover)
+                      : Icon(
+                    _getIconData(product.iconName),
+                    size: 38,
+                    color: forest,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -300,7 +328,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               Expanded(
                 child: Text(
                   product.name,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: forest, height: 1.2),
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: forest, height: 1.2),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -314,7 +342,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
               Text(
                 "\$${product.price.toStringAsFixed(2)}",
-                // Fixed: Changed FontWeight.black to FontWeight.w900
                 style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: forest),
               ),
             ],
@@ -325,6 +352,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   void _showProductDetails(BuildContext context, Product product) {
+    final hasImage = product.imageUrl.isNotEmpty && File(product.imageUrl).existsSync();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -334,8 +363,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
       ),
       builder: (ctx) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          maxChildSize: 0.9,
+          initialChildSize: 0.75,
+          maxChildSize: 0.95,
           minChildSize: 0.5,
           expand: false,
           builder: (_, scrollController) {
@@ -358,10 +387,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor: sage.withOpacity(0.15),
-                        child: Icon(_getIconData(product.iconName), size: 28, color: forest),
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: sage.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: hasImage
+                              ? Image.file(File(product.imageUrl), fit: BoxFit.cover)
+                              : Icon(_getIconData(product.iconName), size: 28, color: forest),
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -391,7 +429,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           const Text("PRICE", style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.bold)),
                           Text(
                             "\$${product.price.toStringAsFixed(2)}",
-                            // Fixed: Changed FontWeight.black to FontWeight.w900
                             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: forest),
                           ),
                         ],
@@ -429,7 +466,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
-                        // Fixed: Changed Border.line to Border.all
                         border: Border.all(color: sage.withOpacity(0.3), width: 1),
                       ),
                       child: Text(b.trim(), style: const TextStyle(fontSize: 11.5, color: forest, fontWeight: FontWeight.w600)),

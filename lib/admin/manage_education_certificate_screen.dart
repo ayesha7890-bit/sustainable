@@ -3,9 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sustainable/database/database_helper.dart';
-import 'package:sustainable/screen/About_contactscreen.dart';
-import 'package:sustainable/screen/contactus.dart';
-// import 'package:sustainable/utils/app_colors.dart';
 
 class ManageEducationScreen extends StatefulWidget {
   const ManageEducationScreen({super.key});
@@ -28,6 +25,12 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
 
   late final AnimationController _entranceController;
   late final AnimationController _fabController;
+
+  // Colors map
+  static const Color forest = Color(0xFF2F4A3E);
+  static const Color sage = Color(0xFF5E8570);
+  static const Color sand = Color(0xFFCBBE9C);
+  static const Color glassBg = Color(0xFF0D2318);
 
   @override
   void initState() {
@@ -75,27 +78,26 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
     );
   }
 
-  Future<String?> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    return image?.path;
-  }
-
-  void _saveItem() async {
+  // --- SAVE OR UPDATE ACTION ---
+  void _saveItem({int? editId}) async {
     try {
-      await DatabaseHelper.instance.insertEducationItem({
+      final itemData = {
         'type': _selectedType,
-        'title': _titleController.text,
-        'subtitle': _subtitleController.text,
-        'description': _descController.text,
+        'title': _titleController.text.trim(),
+        'subtitle': _subtitleController.text.trim(),
+        'description': _descController.text.trim(),
         'image_url': _selectedImagePath ?? '',
-      });
+      };
 
-      _titleController.clear();
-      _subtitleController.clear();
-      _descController.clear();
-      setState(() {
-        _selectedImagePath = null;
-      });
+      if (editId != null) {
+        // Edit mode: Database update call (Make sure updateEducationItem dynamic map accept kare)
+        await DatabaseHelper.instance.updateEducationItem(editId, itemData);
+      } else {
+        // Create mode: Naya item insert karein
+        await DatabaseHelper.instance.insertEducationItem(itemData);
+      }
+
+      _clearForm();
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -103,24 +105,30 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$_selectedType added successfully!'),
-          backgroundColor:AppColors.sage,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          content: Text(editId != null ? 'Content updated successfully! 📝' : '$_selectedType added successfully! 🎉'),
+          backgroundColor: sage,
         ),
       );
     } catch (e) {
-      debugPrint('SAVE ERROR: $e');
+      debugPrint('SAVE/UPDATE ERROR: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Save fail hua: $e'),
+          content: Text('Operation fail hua: $e'),
           backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
     }
+  }
+
+  void _clearForm() {
+    _titleController.clear();
+    _subtitleController.clear();
+    _descController.clear();
+    setState(() {
+      _selectedImagePath = null;
+      _selectedType = 'Article';
+    });
   }
 
   void _deleteItem(int id) async {
@@ -128,222 +136,160 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
     _loadHubItems();
   }
 
-  void _showAddDialog() {
+  // --- MODIFIED DIALOG FOR BOTH ADD AND EDIT ---
+  void _showFormDialog({Map<String, dynamic>? existingItem}) {
+    final isEditMode = existingItem != null;
+
+    if (isEditMode) {
+      _titleController.text = existingItem['title'] ?? '';
+      _subtitleController.text = existingItem['subtitle'] ?? '';
+      _descController.text = existingItem['description'] ?? '';
+      _selectedType = existingItem['type'] ?? 'Article';
+      _selectedImagePath = existingItem['image_url'];
+    } else {
+      _clearForm();
+    }
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.65),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
-      transitionBuilder: (context, anim, secondaryAnimation, child) {
+      transitionBuilder: (dialogContext, anim, secondaryAnimation, child) {
         final curvedValue = Curves.easeOutBack.transform(anim.value);
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 6 * anim.value, sigmaY: 6 * anim.value),
-          child: Transform.scale(
-            scale: curvedValue,
-            child: Opacity(
-              opacity: anim.value.clamp(0.0, 1.0),
-              child: StatefulBuilder(
-                builder: (context, setDialogState) {
-                  return Form(
-                    key: _formKey,
-                    child: Dialog(
-                      backgroundColor: Colors.transparent,
-                      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(28),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppColors.forest.withValues(alpha: 0.85),
-                                  AppColors.sage.withValues(alpha: 0.55),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1.4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.sand.withValues(alpha: 0.15),
-                                  blurRadius: 30,
-                                  spreadRadius: 2,
+        return Transform.scale(
+          scale: curvedValue,
+          child: Opacity(
+            opacity: anim.value,
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                return Form(
+                  key: _formKey,
+                  child: AlertDialog(
+                    backgroundColor: glassBg.withValues(alpha: 0.98),
+                    insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
+                    ),
+                    title: Row(
+                      children: [
+                        Icon(isEditMode ? Icons.edit_note_rounded : Icons.add_circle_outline_rounded, color: sand, size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          isEditMode ? 'Edit Content' : 'Create Content',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                      ],
+                    ),
+                    content: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.9,
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                                 ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(22),
-                            child: SingleChildScrollView(
-                              child: Padding(
-                                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.sand.withValues(alpha: 0.25),
-                                            borderRadius: BorderRadius.circular(14),
-                                          ),
-                                          child: const Icon(Icons.auto_awesome_rounded, color: AppColors.sand, size: 22),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        const Text(
-                                          'Create Content',
-                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    // Glass dropdown
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-                                      ),
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButtonFormField<String>(
-                                          value: _selectedType,
-                                          dropdownColor: AppColors.forest,
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                                          decoration: const InputDecoration(border: InputBorder.none),
-                                          items: ['Article', 'Certification'].map((type) {
-                                            return DropdownMenuItem(
-                                              value: type,
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    type == 'Article' ? Icons.menu_book_rounded : Icons.verified_rounded,
-                                                    color: type == 'Article' ? AppColors.sand : const Color(0xFFC5E1A5),
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(type),
-                                                ],
-                                              ),
-                                            );
-                                          }).toList(),
-                                          onChanged: (v) {
-                                            setDialogState(() {
-                                              _selectedType = v!;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-
-                                    // Image picker with hover-style scale on tap
-                                    _HoverScale(
-                                      onTap: () async {
-                                        final String? path = await _pickImage();
-                                        if (path != null) {
-                                          setDialogState(() => _selectedImagePath = path);
-                                          setState(() => _selectedImagePath = path);
-                                        }
-                                      },
-                                      child: Container(
-                                        height: 92,
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.06),
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                                        ),
-                                        child: _selectedImagePath != null
-                                            ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(15),
-                                          child: Image.file(File(_selectedImagePath!), fit: BoxFit.cover, width: double.infinity),
-                                        )
-                                            : Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButtonFormField<String>(
+                                    value: _selectedType,
+                                    dropdownColor: glassBg,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                    decoration: const InputDecoration(border: InputBorder.none),
+                                    items: ['Article', 'Certification'].map((type) {
+                                      return DropdownMenuItem(
+                                        value: type,
+                                        child: Row(
                                           children: [
-                                            Icon(Icons.cloud_upload_outlined, color: AppColors.sand, size: 26),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Upload Header Image / Logo (Optional)',
-                                              style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.65)),
+                                            Icon(
+                                              type == 'Article' ? Icons.menu_book_rounded : Icons.verified_rounded,
+                                              color: type == 'Article' ? sand : const Color(0xFFC5E1A5),
+                                              size: 18,
                                             ),
+                                            const SizedBox(width: 8),
+                                            Text(type),
                                           ],
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-
-                                    _buildGlassField(
-                                      controller: _titleController,
-                                      label: _selectedType == 'Article' ? 'Article Title' : 'Certification Name (e.g. Energy Star)',
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildGlassField(
-                                      controller: _subtitleController,
-                                      label: _selectedType == 'Article' ? 'Author / Topic' : 'Issuing Organization',
-                                      required: false,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildGlassField(
-                                      controller: _descController,
-                                      label: _selectedType == 'Article' ? 'Article Content' : 'Meaning & Guidelines',
-                                      maxLines: 3,
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context),
-                                          child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold)),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _HoverScale(
-                                          onTap: () {
-                                            FocusScope.of(context).unfocus();
-                                            if (_formKey.currentState!.validate()) {
-                                              _saveItem();
-                                            }
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
-                                            decoration: BoxDecoration(
-                                              gradient: const LinearGradient(colors: [AppColors.sage, AppColors.sand]),
-                                              borderRadius: BorderRadius.circular(14),
-                                              boxShadow: [
-                                                BoxShadow(color: AppColors.sage.withValues(alpha: 0.45), blurRadius: 14, offset: const Offset(0, 5)),
-                                              ],
-                                            ),
-                                            child: const Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text('Save Content', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5)),
-                                                SizedBox(width: 6),
-                                                Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      );
+                                    }).toList(),
+                                    onChanged: (v) {
+                                      setDialogState(() {
+                                        _selectedType = v!;
+                                      });
+                                    },
+                                  ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              _buildGlassField(
+                                controller: _titleController,
+                                label: _selectedType == 'Article' ? 'Article Title' : 'Certification Name (e.g. Energy Star)',
+                              ),
+                              const SizedBox(height: 12),
+                              _buildGlassField(
+                                controller: _subtitleController,
+                                label: _selectedType == 'Article' ? 'Author / Topic' : 'Issuing Organization',
+                                required: false,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildGlassField(
+                                controller: _descController,
+                                label: _selectedType == 'Article' ? 'Article Content' : 'Meaning & Guidelines',
+                                maxLines: 3,
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
+                    actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 12),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          _clearForm();
+                          Navigator.pop(dialogContext);
+                        },
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold)),
+                      ),
+                      Material(
+                        color: sage,
+                        borderRadius: BorderRadius.circular(14),
+                        elevation: 4,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            FocusScope.of(context).unfocus();
+                            if (_formKey.currentState!.validate()) {
+                              _saveItem(editId: isEditMode ? existingItem['id'] : null);
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(isEditMode ? 'Update' : 'Save Content', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         );
@@ -361,10 +307,10 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.sand, width: 1.4)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: sand, width: 1.4)),
         errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.redAccent, width: 1)),
         focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.redAccent, width: 1.4)),
       ),
@@ -382,7 +328,7 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.forest, AppColors.sage, AppColors.sand],
+            colors: [forest, sage, sand],
             stops: [0.0, 0.55, 1.0],
           ),
         ),
@@ -431,7 +377,8 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
                     return _staggered(
                       index,
                       _HoverScale(
-                        onTap: () {}, // reserved for future detail/edit view
+                        // CARD TAPPING ACTION OPENS THE EDIT FORM DIALOG
+                        onTap: () => _showFormDialog(existingItem: item),
                         scaleAmount: 0.985,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
@@ -441,12 +388,9 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(13),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.10),
+                                color: glassBg.withValues(alpha: 0.45),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                                boxShadow: [
-                                  BoxShadow(color: AppColors.forest.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 6)),
-                                ],
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                               ),
                               child: Row(
                                 children: [
@@ -459,10 +403,10 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
                                     width: 52,
                                     height: 52,
                                     decoration: BoxDecoration(
-                                      color: AppColors.sand.withValues(alpha: 0.20),
+                                      color: sand.withValues(alpha: 0.20),
                                       borderRadius: BorderRadius.circular(13),
                                     ),
-                                    child: Icon(isArticle ? Icons.menu_book_rounded : Icons.verified_rounded, color: AppColors.sand),
+                                    child: Icon(isArticle ? Icons.menu_book_rounded : Icons.verified_rounded, color: sand),
                                   ),
                                   const SizedBox(width: 13),
                                   Expanded(
@@ -472,13 +416,13 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
-                                            color: (isArticle ? AppColors.sand : const Color(0xFFC5E1A5)).withValues(alpha: 0.22),
+                                            color: (isArticle ? sand : const Color(0xFFC5E1A5)).withValues(alpha: 0.22),
                                             borderRadius: BorderRadius.circular(7),
                                           ),
                                           child: Text(
-                                            item['type'],
+                                            item['type'] ?? '',
                                             style: TextStyle(
-                                              color: isArticle ? AppColors.sand : const Color(0xFFC5E1A5),
+                                              color: isArticle ? sand : const Color(0xFFC5E1A5),
                                               fontSize: 10,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -486,7 +430,7 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
                                         ),
                                         const SizedBox(height: 5),
                                         Text(
-                                          item['title'],
+                                          item['title'] ?? '',
                                           style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -498,13 +442,18 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
                                           ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          item['description'],
+                                          item['description'] ?? '',
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(color: Colors.white.withValues(alpha: 0.72), fontSize: 12),
                                         ),
                                       ],
                                     ),
+                                  ),
+                                  // Action Icon for Editing Explicitly
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_rounded, color: Colors.white60, size: 20),
+                                    onPressed: () => _showFormDialog(existingItem: item),
                                   ),
                                   _HoverScale(
                                     onTap: () => _deleteItem(item['id']),
@@ -535,16 +484,16 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
       floatingActionButton: ScaleTransition(
         scale: CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
         child: _HoverScale(
-          onTap: _showAddDialog,
+          onTap: () => _showFormDialog(), // Call without arguments for fresh creation
           scaleAmount: 0.90,
           child: Container(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.sage, AppColors.sand]),
+              color: sage,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(color: AppColors.sage.withValues(alpha: 0.5), blurRadius: 18, spreadRadius: 1),
+                BoxShadow(color: sage.withValues(alpha: 0.5), blurRadius: 18, spreadRadius: 1),
               ],
               border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.2),
             ),
@@ -556,8 +505,6 @@ class _ManageEducationScreenState extends State<ManageEducationScreen>
   }
 }
 
-/// Reusable press-scale wrapper — the mobile equivalent of a "hover" effect,
-/// giving instant tactile feedback on tap-down with a smooth spring back.
 class _HoverScale extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

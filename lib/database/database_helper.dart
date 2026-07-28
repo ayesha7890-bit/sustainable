@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // 🚀 Version updated to 5 to handle new Recipe fields cleanly
+      version: 6, // 🚀 Incremented to 6 to handle missing Product fields cleanly
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -41,7 +41,6 @@ class DatabaseHelper {
       ''');
     }
     if (oldVersion < 3) {
-      // 1. User Carbon Footprint Tracking Logs
       await db.execute('''
         CREATE TABLE IF NOT EXISTS carbon_logs (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +52,6 @@ class DatabaseHelper {
         )
       ''');
 
-      // 2. User Waste Recycling Tracker Logs
       await db.execute('''
         CREATE TABLE IF NOT EXISTS waste_logs (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,7 +62,6 @@ class DatabaseHelper {
         )
       ''');
 
-      // 3. Track which challenges are completed by the user
       await db.execute('''
         CREATE TABLE IF NOT EXISTS completed_challenges (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +71,6 @@ class DatabaseHelper {
       ''');
     }
 
-    // 💡 AUTOMATIC UPGRADE FOR FORUM TABLE
     if (oldVersion < 4) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS forum_posts (
@@ -88,8 +84,6 @@ class DatabaseHelper {
       ''');
     }
 
-    // 🚀 AUTOMATIC UPGRADE FOR RECIPES TABLE (Version 5)
-    // Purane users ke app mein tables ko delete kiye bina ye naye columns dynamically add ho jayenge
     if (oldVersion < 5) {
       try {
         await db.execute("ALTER TABLE recipes ADD COLUMN category TEXT;");
@@ -100,8 +94,19 @@ class DatabaseHelper {
         await db.execute("ALTER TABLE recipes ADD COLUMN eco_benefit TEXT;");
         await db.execute("ALTER TABLE recipes ADD COLUMN icon_name TEXT;");
       } catch (e) {
-        // If columns already exist, prevent app crash on dynamic re-runs
-        print("Upgrade warning/info: $e");
+        print("Upgrade warning/info (recipes): $e");
+      }
+    }
+
+    // 🚀 AUTOMATIC UPGRADE FOR PRODUCTS TABLE (Version 6)
+    if (oldVersion < 6) {
+      try {
+        await db.execute("ALTER TABLE products ADD COLUMN price REAL DEFAULT 0.0;");
+        await db.execute("ALTER TABLE products ADD COLUMN carbon_saved REAL DEFAULT 0.0;");
+        await db.execute("ALTER TABLE products ADD COLUMN icon_name TEXT;");
+        await db.execute("ALTER TABLE products ADD COLUMN benefits_csv TEXT;");
+      } catch (e) {
+        print("Upgrade warning/info (products): $e");
       }
     }
   }
@@ -115,13 +120,18 @@ class DatabaseHelper {
       )
     ''');
 
+    // 🎯 Fully Updated Products Table Schema for Fresh Installs
     await db.execute('''
       CREATE TABLE products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         category TEXT NOT NULL,
         description TEXT,
-        image_url TEXT
+        image_url TEXT,
+        price REAL DEFAULT 0.0,
+        carbon_saved REAL DEFAULT 0.0,
+        icon_name TEXT,
+        benefits_csv TEXT
       )
     ''');
 
@@ -155,7 +165,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 🎯 Fully Updated Recipes Table Schema for Fresh Installs
     await db.execute('''
       CREATE TABLE recipes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,7 +218,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // 💡 New Community Forum Table for fresh installs
     await db.execute('''
       CREATE TABLE forum_posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,10 +231,9 @@ class DatabaseHelper {
   }
 
   // ==========================================
-  // 🔥 NEW USER-SIDE CRUD METHODS (V3 & V4)
+  // FORUM & TRACKING METHODS
   // ==========================================
 
-  // --- 💬 Community Forum Methods (NEW) ---
   Future<int> insertForumPost(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('forum_posts', row);
@@ -237,17 +244,17 @@ class DatabaseHelper {
     return await db.query('forum_posts', orderBy: 'id DESC');
   }
 
-  Future<int> likeForumPost(int id, int currentLikes) async {
+  // 🔥 FIXED: Direct explicit single-like state storage injection
+  Future<int> likeForumPost(int id, int exactTargetLikes) async {
     final db = await instance.database;
     return await db.update(
       'forum_posts',
-      {'likes': currentLikes + 1},
+      {'likes': exactTargetLikes}, // Updated directly to match screen calculation toggle state
       where: 'id = ?',
       whereArgs: [id],
     );
   }
 
-  // --- 📊 Carbon Logs Methods ---
   Future<int> insertCarbonLog(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('carbon_logs', row);
@@ -258,7 +265,6 @@ class DatabaseHelper {
     return await db.query('carbon_logs', orderBy: 'id DESC');
   }
 
-  // --- 🗑️ Waste Logs Methods ---
   Future<int> insertWasteLog(Map<String, dynamic> row) async {
     final db = await instance.database;
     return await db.insert('waste_logs', row);
@@ -269,7 +275,6 @@ class DatabaseHelper {
     return await db.query('waste_logs', orderBy: 'id DESC');
   }
 
-  // --- 🎯 Completed Challenges Track Methods ---
   Future<int> completeChallenge(int challengeId, String date) async {
     final db = await instance.database;
     return await db.insert('completed_challenges', {
@@ -284,7 +289,7 @@ class DatabaseHelper {
   }
 
   // ==========================================
-  // 🏛️ ADMIN PANEL & OLD CRUD OPERATIONS (EXISTING)
+  // ADMIN PANEL CRUD OPERATIONS
   // ==========================================
 
   Future<int> insertTravelTip(Map<String, dynamic> row) async {
@@ -295,6 +300,16 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> fetchTravelTips() async {
     Database db = await instance.database;
     return await db.query('travel_tips');
+  }
+
+  Future<int> updateTravelTip(int id, Map<String, dynamic> row) async {
+    Database db = await instance.database;
+    return await db.update(
+      'travel_tips',
+      row,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<int> deleteTravelTip(int id) async {
@@ -310,6 +325,16 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> fetchRecipes() async {
     Database db = await instance.database;
     return await db.query('recipes');
+  }
+
+  Future<int> updateRecipe(Map<String, dynamic> row) async {
+    Database db = await instance.database;
+    return await db.update(
+      'recipes',
+      row,
+      where: 'id = ?',
+      whereArgs: [row['id']],
+    );
   }
 
   Future<int> deleteRecipe(int id) async {
@@ -353,6 +378,16 @@ class DatabaseHelper {
     return await db.query('education_hub', orderBy: 'id DESC');
   }
 
+  Future<int> updateEducationItem(int id, Map<String, dynamic> row) async {
+    Database db = await instance.database;
+    return await db.update(
+      'education_hub',
+      row,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deleteEducationItem(int id) async {
     final db = await instance.database;
     return await db.delete('education_hub', where: 'id = ?', whereArgs: [id]);
@@ -386,6 +421,16 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> fetchChallenges() async {
     final db = await instance.database;
     return await db.query('challenges', orderBy: 'id DESC');
+  }
+
+  Future<int> updateChallenge(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.update(
+      'challenges',
+      row,
+      where: 'id = ?',
+      whereArgs: [row['id']],
+    );
   }
 
   Future<int> deleteChallenge(int id) async {

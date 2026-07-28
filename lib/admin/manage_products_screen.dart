@@ -19,6 +19,10 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
   final _descController = TextEditingController();
   final _searchController = TextEditingController();
 
+  final _priceController = TextEditingController();
+  final _carbonController = TextEditingController();
+  final _benefitsController = TextEditingController();
+
   String? _selectedCategory;
   String? _selectedImagePath;
   int? _editingId;
@@ -35,7 +39,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
   late AnimationController _fabController;
   late Animation<double> _fabScale;
 
-  // ── Aapki Signature Theme Colors ───────────────────────────────
   static const Color _forest = AppColors.forest;
   static const Color _sage = AppColors.sage;
   static const Color _sand = AppColors.sand;
@@ -70,6 +73,9 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
     _nameController.dispose();
     _descController.dispose();
     _searchController.dispose();
+    _priceController.dispose();
+    _carbonController.dispose();
+    _benefitsController.dispose();
     _headerController.dispose();
     _fabController.dispose();
     super.dispose();
@@ -128,14 +134,18 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
     }
   }
 
-  Future<void> _saveProduct(BuildContext dialogContext) async {
+  // 🔥 FIXED: Is function ke save flow aur state variables ki hierarchy ko sahi kiya hai
+  Future<void> _saveProduct(BuildContext dialogContext, void Function(void Function()) setDialogState) async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategory == null) {
       _showSnack('Kindly Select Category!', isError: true);
       return;
     }
 
+    // Modal Sheet aur Main page dono ke loading spinners ko true karein
+    setDialogState(() => _isSaving = true);
     setState(() => _isSaving = true);
+
     final wasEditing = _editingId != null;
 
     final data = {
@@ -143,6 +153,10 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
       'category': _selectedCategory,
       'description': _descController.text.trim(),
       'image_url': _selectedImagePath ?? '',
+      'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+      'carbon_saved': double.tryParse(_carbonController.text.trim()) ?? 25.0,
+      'icon_name': _selectedCategory?.toLowerCase() == 'bathroom' ? 'brush' : 'shopping_bag',
+      'benefits_csv': _benefitsController.text.isNotEmpty ? _benefitsController.text.trim() : 'Eco Friendly',
     };
 
     try {
@@ -152,13 +166,19 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
         await DatabaseHelper.instance.updateProduct(_editingId!, data);
       }
 
+      // Pehle loading bands karein taake pop safe ho ske
+      setDialogState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
+
       _resetForm();
       if (dialogContext.mounted) Navigator.pop(dialogContext);
+
       await _loadData(showLoader: false);
-      setState(() => _isSaving = false);
       _showSnack(wasEditing ? 'Product updated! ✏️' : 'Product saved successfully! ✅');
     } catch (e) {
-      setState(() => _isSaving = false);
+      setDialogState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
+
       if (dialogContext.mounted) {
         ScaffoldMessenger.of(dialogContext).showSnackBar(
           SnackBar(
@@ -212,6 +232,9 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
   void _resetForm() {
     _nameController.clear();
     _descController.clear();
+    _priceController.clear();
+    _carbonController.clear();
+    _benefitsController.clear();
     _selectedCategory = null;
     _selectedImagePath = null;
     _editingId = null;
@@ -243,6 +266,9 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
     _editingId = product?['id'];
     _nameController.text = product?['name'] ?? '';
     _descController.text = product?['description'] ?? '';
+    _priceController.text = (product?['price'] ?? '').toString();
+    _carbonController.text = (product?['carbon_saved'] ?? '').toString();
+    _benefitsController.text = product?['benefits_csv'] ?? '';
     _selectedCategory = product?['category'];
     _selectedImagePath =
     (product?['image_url'] as String?)?.isNotEmpty == true
@@ -261,15 +287,15 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
+              height: MediaQuery.of(context).size.height * 0.82,
               decoration: BoxDecoration(
-                color: _forest.withOpacity(0.9),
+                color: _forest.withOpacity(0.92),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
                 border: Border(top: BorderSide(color: Colors.white.withOpacity(0.2))),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // --- Glass Header ---
                   Container(
                     padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
                     decoration: BoxDecoration(
@@ -304,7 +330,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                       ],
                     ),
                   ),
-                  // --- Scrollable Form Body ---
                   Flexible(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -314,15 +339,14 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // --- Image Preview ---
                             Center(
                               child: GestureDetector(
                                 onTap: () => _pickImage(setDialogState),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 250),
                                   curve: Curves.easeOut,
-                                  height: 120,
-                                  width: 120,
+                                  height: 110,
+                                  width: 110,
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(22),
@@ -354,12 +378,12 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(10),
+                                        padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.12),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(Icons.add_a_photo_rounded, color: _sand, size: 20),
+                                        child: const Icon(Icons.add_a_photo_rounded, color: _sand, size: 18),
                                       ),
                                       const SizedBox(height: 6),
                                       const Text('PC Explorer Pic',
@@ -369,20 +393,20 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 16),
                             TextFormField(
                               controller: _nameController,
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
                               decoration: _dialogFieldDecoration('Product Name', icon: Icons.shopping_bag_outlined),
                               validator: (v) => v == null || v.trim().isEmpty ? 'Name required' : null,
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 12),
                             DropdownButtonFormField<String>(
                               value: _selectedCategory,
                               dropdownColor: _forest,
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
                               decoration: _dialogFieldDecoration('Category', icon: Icons.category_outlined),
-                              hint: const Text('Select Category', style: TextStyle(color: Colors.white)),
+                              hint: const Text('Select Category', style: TextStyle(color: Colors.white70, fontSize: 14)),
                               items: _categories.map((cat) {
                                 return DropdownMenuItem<String>(
                                   value: cat['name'].toString(),
@@ -394,11 +418,41 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                               },
                               validator: (v) => v == null ? 'Select Category' : null,
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _priceController,
+                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    keyboardType: TextInputType.number,
+                                    decoration: _dialogFieldDecoration('Price (\$)', icon: Icons.attach_money_rounded),
+                                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _carbonController,
+                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    keyboardType: TextInputType.number,
+                                    decoration: _dialogFieldDecoration('Saves CO2 (kg)', icon: Icons.co2_rounded),
+                                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _benefitsController,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              decoration: _dialogFieldDecoration('Benefits (comma separated)', icon: Icons.star_border_rounded),
+                            ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: _descController,
                               maxLines: 2,
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
                               decoration: _dialogFieldDecoration('Description (optional)', icon: Icons.notes_outlined),
                             ),
                           ],
@@ -406,7 +460,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                       ),
                     ),
                   ),
-                  // --- Actions Bar (✨ FIXED: Wrapped correctly inside Padding Widget) ---
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 12, 22, 26),
                     child: Row(
@@ -436,8 +489,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                             onTap: _isSaving
                                 ? null
                                 : () {
-                              setDialogState(() {});
-                              _saveProduct(dialogContext);
+                              _saveProduct(dialogContext, setDialogState);
                             },
                           ),
                         ),
@@ -495,10 +547,11 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
   InputDecoration _dialogFieldDecoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.white70),
-      prefixIcon: icon != null ? Icon(icon, color: _sand) : null,
+      labelStyle: const TextStyle(color: Colors.white70, fontSize: 13),
+      prefixIcon: icon != null ? Icon(icon, color: _sand, size: 20) : null,
       filled: true,
       fillColor: Colors.white.withOpacity(0.06),
+      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -549,7 +602,7 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
   }
 
   // ---------------------------------------------------------------
-  // BUILD SCREEN
+  // BUILD SCREEN BUILDERS
   // ---------------------------------------------------------------
 
   @override
@@ -626,10 +679,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                 ],
               ),
             ),
-            // _glassIconButton(
-            //   icon: Icons.refresh_rounded,
-            //   onTap: () => _loadData(),
-            // ),
           ],
         ),
       ),
@@ -696,11 +745,11 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
           return ChoiceChip(
             label: Text(name),
             selected: selected,
-            selectedColor: Colors.white, // Selected hone par solid white background
+            selectedColor: Colors.white,
             backgroundColor: Colors.white.withOpacity(0.14),
-            checkmarkColor: _forest, // Checkmark icon also dynamically colored
+            checkmarkColor: _forest,
             labelStyle: TextStyle(
-              color: selected ? _forest : Colors.black, // ✨ FIXED: Selected state text changes to dark forest green!
+              color: selected ? _forest : Colors.white,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
@@ -777,7 +826,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // --- Image Section ---
               Expanded(
                 flex: 11,
                 child: Stack(
@@ -786,56 +834,70 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                     Hero(
                       tag: 'product_${product['id']}',
                       child: hasImage
-                          ? Image.file(
-                        File(imagePath),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stack) => _imagePlaceholder(),
-                      )
-                          : _imagePlaceholder(),
+                          ? Image.file(File(imagePath), fit: BoxFit.cover)
+                          : Container(
+                        color: _sage.withOpacity(0.2),
+                        child: const Icon(Icons.shopping_bag_outlined, color: Colors.white54, size: 40),
+                      ),
                     ),
                     Positioned(
                       top: 8,
                       right: 8,
-                      child: GestureDetector(
-                        onTap: () => _deleteProduct(product),
-                        child: CircleAvatar(
-                          radius: 15,
-                          backgroundColor: Colors.black.withOpacity(0.4),
-                          child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.white),
-                        ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _showProductDialog(product: product),
+                            child: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: Colors.white.withOpacity(0.9),
+                              child: const Icon(Icons.edit_rounded, size: 14, color: _forest),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => _deleteProduct(product),
+                            child: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: Colors.redAccent.withOpacity(0.9),
+                              child: const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              // --- Info Section ---
               Expanded(
-                flex: 8,
+                flex: 6,
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        product['category']?.toString().toUpperCase() ?? '',
-                        style: const TextStyle(fontSize: 9, color: _sand, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        product['name']?.toString() ?? '',
+                        product['name'] ?? '',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                       ),
-                      const SizedBox(height: 2),
                       Text(
-                        (product['description'] != null && product['description'].toString().isNotEmpty)
-                            ? product['description'].toString()
-                            : 'No description provided',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11, color: Colors.white70),
+                        product['category'] ?? '',
+                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '\$${product['price']?.toString() ?? '0.0'}',
+                            style: const TextStyle(color: _sand, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          Text(
+                            '${product['carbon_saved']?.toString() ?? '0'} kg',
+                            style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -848,27 +910,16 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
     );
   }
 
-  Widget _imagePlaceholder() {
-    return Container(
-      color: Colors.white.withOpacity(0.08),
-      child: const Icon(Icons.image_outlined, color: Colors.white60, size: 28),
-    );
-  }
-
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-            child: const Icon(Icons.shopping_bag_outlined, size: 48, color: Colors.white70),
-          ),
+          Icon(Icons.inventory_2_outlined, size: 48, color: Colors.white.withOpacity(0.4)),
           const SizedBox(height: 12),
-          const Text(
-            'No products available.',
-            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+          Text(
+            'No products found',
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ],
       ),

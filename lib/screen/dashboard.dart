@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:ui'; // Used for premium ImageFilter blur effects
-import 'package:firebase_auth/firebase_auth.dart'; // 1. Firebase Auth Import Kiya
+import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth Import
 
 // Your Exact Project Path Imports
 import 'package:sustainable/screen/home_screen.dart';
 import 'package:sustainable/screen/About_contactscreen.dart';
 import 'package:sustainable/screen/ChallengesScreen.dart';
-import 'package:sustainable/screen/EducationalScreen.dart';
 import 'package:sustainable/screen/ForumScreen.dart';
 import 'package:sustainable/screen/ImageGalleryScreen.dart';
 import 'package:sustainable/screen/ProductsScreen.dart';
@@ -15,7 +14,7 @@ import 'package:sustainable/screen/TipsScreen.dart';
 import 'package:sustainable/screen/WasteTrackerScreen.dart';
 import 'package:sustainable/screen/carbon_tracker_screen.dart';
 import 'package:sustainable/screen/certifications_screen.dart';
-import 'package:sustainable/screen/loginpage.dart'; // 2. Login Screen Import Kiya redirect karne ke liye
+import 'package:sustainable/screen/loginpage.dart'; // Login Screen Import
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});
@@ -35,7 +34,7 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
 
   late final List<Widget> pages;
 
-  // Document Modules Professional Titles corresponding to indices
+  // Fixed 10-Item Clean Titles Mapping (0 to 9 Array Sequence)
   final List<String> titles = [
     "EcoWise Home",              // Index 0
     "Carbon Footprint Tracker",  // Index 1
@@ -46,9 +45,8 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
     "Analytics & Waste Tracker", // Index 6
     "Meal & Recipe Planner",     // Index 7
     "Energy & Travel Hub",       // Index 8
-    "Educational Content",       // Index 9
-    "Eco Image Gallery",         // Index 10
-    "About & Support Desk",      // Index 11
+    "Eco Image Gallery",         // Index 9
+    "About & Support Desk",      // Index 10
   ];
 
   @override
@@ -59,19 +57,19 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
       duration: const Duration(milliseconds: 400),
     );
 
+    // Fixed 10-Item Pages Matrix (Education Hub Removed completely)
     pages = [
       HomeScreen(onNavigate: (index) => _onPageChanged(index)), // Index 0: Home Page
       carban(),                 // Index 1: Carbon Tracker
       ChallengesScreen(),       // Index 2: Sustainable Challenges
       ForumScreen(),            // Index 3: Community Forum
-      ProductsScreen(),         // Index 4: Eco Alternatives
-      EducationHubScreen(),     // Index 5: Eco Labels Guide
+      ProductsScreen(),
+      EducationHubScreen(),     // Index 5: Green Certifications Guide
       WasteTrackerScreen(),     // Index 6: Analytics & Waste Logs
-      RecipesScreen(),         // Index 7: Meal Planner
-      EcoTipsUserScreen(),// Index 8: Energy & Travel Hub
-      EducationalScreen(),      // Index 9: Learning Hub
-      ImageGalleryScreen(),     // Index 10: Photo Gallery
-      AboutContactScreen(), // Index 11: About & Support Form
+      RecipesScreen(),          // Index 7: Meal Planner
+      EcoTipsUserScreen(),      // Index 8: Energy & Travel Hub
+      const ImageGalleryScreen(), // Index 9: Photo Gallery
+      const AboutContactScreen(), // Index 10: About & Support Form
     ];
 
     _fadeController.forward(); // Triggers first screen animation
@@ -86,7 +84,7 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
     _fadeController.forward(); // Dynamic screen fluid switch trigger
   }
 
-  // 3. Logout function jo account sign out karega aur wapas login par bhejega
+  // Logout function
   void _handleLogout() async {
     try {
       await FirebaseAuth.instance.signOut(); // Firebase Sign Out
@@ -123,7 +121,6 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    // Current user's email dynamic check
     final User? currentUser = FirebaseAuth.instance.currentUser;
     final String userEmail = currentUser?.email ?? 'citizen@ecowise.com';
     final String userName = currentUser?.displayName ?? 'Eco Citizen';
@@ -141,6 +138,18 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
         backgroundColor: Colors.transparent,
 
         appBar: AppBar(
+          // 🔥 FIXED: Custom Premium Staggered Notes Icon replacing default Hamburger
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(
+                Icons.notes_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+              tooltip: 'Open Navigation Menu',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
           title: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             transitionBuilder: (Widget child, Animation<double> animation) {
@@ -292,7 +301,7 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                 ),
               ),
 
-              // Scrollable Menu Tiles
+              // Scrollable Menu Tiles with Fixed Indices Mapping
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -306,13 +315,12 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
                     _buildDrawerTile(6, Icons.bar_chart_outlined, 'Analytics & Waste'),
                     _buildDrawerTile(7, Icons.restaurant_menu_outlined, 'Recipe & Meal Planner'),
                     _buildDrawerTile(8, Icons.bolt_outlined, 'Energy & Travel Hub'),
-                    _buildDrawerTile(9, Icons.menu_book_rounded, 'Educational Hub'),
-                    _buildDrawerTile(10, Icons.collections_rounded, 'Inspirational Gallery'),
-                    _buildDrawerTile(11, Icons.contact_support_outlined, 'About & Contact Us'),
+                    _buildDrawerTile(9, Icons.collections_rounded, 'Inspirational Gallery'),
+                    _buildDrawerTile(10, Icons.contact_support_outlined, 'About & Contact Us'),
 
                     const Divider(height: 24, thickness: 1, indent: 16, endIndent: 16),
 
-                    // 4. Premium Design Red Colored Logout Tile
+                    // Logout Tile
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       child: InkWell(
@@ -477,7 +485,7 @@ class _DashboardShellState extends State<DashboardShell> with SingleTickerProvid
   }
 }
 
-// Custom interactive Hoverable Drawer Tile
+// Custom interactive Hoverable Drawer Tile (Unchanged structural logic)
 class HoverableDrawerTile extends StatefulWidget {
   final int index;
   final int currentIndex;
@@ -580,7 +588,7 @@ class _HoverableDrawerTileState extends State<HoverableDrawerTile> {
   }
 }
 
-// Custom interactive Hoverable Bottom Navigation Tab
+// Custom interactive Hoverable Bottom Navigation Tab (Unchanged structural logic)
 class HoverableBottomTab extends StatefulWidget {
   final int index;
   final bool isSelected;

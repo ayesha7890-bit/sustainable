@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sustainable/database/database_helper.dart';
 
 class ManageTipsScreen extends StatefulWidget {
   const ManageTipsScreen({super.key});
@@ -8,21 +9,26 @@ class ManageTipsScreen extends StatefulWidget {
 }
 
 class _ManageTipsScreenState extends State<ManageTipsScreen> {
-  // 📝 Dynamic List: Admin jo bhi add karega wo isme real-time store hota jayega
-  final List<Map<String, String>> _tips = [
-    {
-      'title': 'Turn off unused appliances',
-      'desc': 'Always unplug electronics when not in use to save phantom energy load.'
-    },
-    {
-      'title': 'Optimize heating and cooling',
-      'desc': 'Set your thermostat to eco-friendly levels to reduce electricity bills.'
-    },
-  ];
+  // 🔥 SQLite Database se data store karne ke liye list
+  List<Map<String, dynamic>> _tips = [];
 
   // Controllers to capture text from input fields
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTips(); // Screen load hote hi data database se aayega
+  }
+
+  // 📥 Database se pure travel/energy tips fetch karne ka function
+  void _loadTips() async {
+    final data = await DatabaseHelper.instance.fetchTravelTips();
+    setState(() {
+      _tips = data;
+    });
+  }
 
   @override
   void dispose() {
@@ -31,10 +37,23 @@ class _ManageTipsScreenState extends State<ManageTipsScreen> {
     super.dispose();
   }
 
-  // ✨ DYNAMIC DIALOG: Nayi tip input karne ke liye form
-  void _showAddTipDialog() {
-    _titleController.clear();
-    _descController.clear();
+  // 🗑️ Database se tip delete karne ka logic
+  void _deleteTip(int id) async {
+    await DatabaseHelper.instance.deleteTravelTip(id);
+    _loadTips(); // List refresh
+  }
+
+  // ✨ DYNAMIC DIALOG: Add aur Edit dono ko handling ke liye combo dialog
+  void _showTipDialog({Map<String, dynamic>? editMap}) {
+    if (editMap != null) {
+      // Edit Mode: Purana data controllers mein set karo
+      _titleController.text = editMap['title'] ?? '';
+      _descController.text = editMap['description'] ?? '';
+    } else {
+      // Add Mode: Fields ko empty karo
+      _titleController.clear();
+      _descController.clear();
+    }
 
     showDialog(
       context: context,
@@ -42,9 +61,9 @@ class _ManageTipsScreenState extends State<ManageTipsScreen> {
         return AlertDialog(
           backgroundColor: const Color(0xFF2F4A3E),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'Add New Energy Tip',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          title: Text(
+            editMap != null ? 'Edit Energy Tip' : 'Add New Energy Tip',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -88,26 +107,37 @@ class _ManageTipsScreenState extends State<ManageTipsScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
             ),
-            // Add Button Jo Data Dynamic Add Karega
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFCBBE9C),
                 foregroundColor: const Color(0xFF2F4A3E),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: () {
+              onPressed: () async {
                 if (_titleController.text.isNotEmpty && _descController.text.isNotEmpty) {
-                  // State update ho rahi hai taake screen refresh ho jaye
-                  setState(() {
-                    _tips.add({
-                      'title': _titleController.text.trim(),
-                      'desc': _descController.text.trim(),
-                    });
-                  });
-                  Navigator.pop(context);
+                  final tipData = {
+                    'category': 'Energy', // Category hardcoded to Energy for this screen
+                    'title': _titleController.text.trim(),
+                    'description': _descController.text.trim(),
+                  };
+
+                  if (editMap != null) {
+                    // ✏️ Database Update Command
+                    await DatabaseHelper.instance.updateTravelTip(editMap['id'], tipData);
+                  } else {
+                    // ➕ Database Insert Command
+                    await DatabaseHelper.instance.insertTravelTip(tipData);
+                  }
+
+                  if (!mounted) return;
+                  Navigator.pop(context); // Dialog close
+                  _loadTips(); // Database se updated list dobara load karo
                 }
               },
-              child: const Text('Add Tip', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                editMap != null ? 'Update Tip' : 'Add Tip',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -134,7 +164,7 @@ class _ManageTipsScreenState extends State<ManageTipsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header Row
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Row(
@@ -156,7 +186,7 @@ class _ManageTipsScreenState extends State<ManageTipsScreen> {
                 ),
               ),
 
-              // Dynamic Tips List
+              // Dynamic Tips List from Database
               Expanded(
                 child: _tips.isEmpty
                     ? const Center(
@@ -192,24 +222,31 @@ class _ManageTipsScreenState extends State<ManageTipsScreen> {
                           child: const Icon(Icons.bolt_rounded, color: Colors.amber, size: 24),
                         ),
                         title: Text(
-                          tip['title']!,
+                          tip['title'] ?? 'No Title',
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            tip['desc']!,
+                            tip['description'] ?? 'No Description',
                             style: const TextStyle(color: Colors.white70, fontSize: 13),
                           ),
                         ),
-                        // Delete Button Jo Dynamic Element Remove Karega
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.white70),
-                          onPressed: () {
-                            setState(() {
-                              _tips.removeAt(index);
-                            });
-                          },
+                        // Action Buttons Row (Edit + Delete)
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // ✏️ EDIT BUTTON
+                            IconButton(
+                              icon: const Icon(Icons.edit_rounded, color: Colors.white70),
+                              onPressed: () => _showTipDialog(editMap: tip),
+                            ),
+                            // 🗑️ DELETE BUTTON
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.white70),
+                              onPressed: () => _deleteTip(tip['id']),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -220,10 +257,10 @@ class _ManageTipsScreenState extends State<ManageTipsScreen> {
           ),
         ),
       ),
-      // Plus Button to Trigger Form Dialog
+      // Plus Floating Button (Trigger Add Mode)
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFFCBBE9C),
-        onPressed: _showAddTipDialog,
+        onPressed: () => _showTipDialog(),
         child: const Icon(Icons.add_rounded, color: Color(0xFF2F4A3E)),
       ),
     );

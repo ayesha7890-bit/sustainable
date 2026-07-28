@@ -45,7 +45,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     _AdminModule(
       title: 'Recipes',
       icon: Icons.restaurant_menu_rounded,
-      screenBuilder: () => const AdminAddRecipeScreen(),
+      screenBuilder: () => const ManageRecipesScreen(),
     ),
     _AdminModule(
       title: 'Energy Tips',
@@ -58,11 +58,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       icon: Icons.travel_explore_rounded,
       screenBuilder: () => const ManageTravelScreen(),
     ),
-    _AdminModule(
-      title: 'Education',
-      icon: Icons.menu_book_rounded,
-      screenBuilder: null,
-    ),
+    // _AdminModule(
+    //   title: 'Education',
+    //   icon: Icons.menu_book_rounded,
+    //   screenBuilder: null,
+    // ),
   ];
 
   @override

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import '../utils/app_colors.dart';
 import 'package:sustainable/database/database_helper.dart';
+
 class HomeScreen extends StatefulWidget {
   final Function(int) onNavigate;
   const HomeScreen({super.key, required this.onNavigate});
@@ -45,125 +46,153 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  // 📊 Dono local tables se aik sath data load karne ka combine future function
+  Future<Map<String, dynamic>> _loadDashboardData() async {
+    final carbonLogs = await DatabaseHelper.instance.getCarbonLogs();
+    final completedChallenges = await DatabaseHelper.instance.fetchCompletedChallenges();
+    final tips = await DatabaseHelper.instance.fetchTips();
+
+    double totalCarbon = 0.0;
+    if (carbonLogs.isNotEmpty) {
+      // Latet log entry se total_co2 nikalna
+      totalCarbon = (carbonLogs.first['total_co2'] ?? 0.0).toDouble();
+    }
+
+    return {
+      'carbonScore': totalCarbon,
+      'completedCount': completedChallenges.length,
+      'tipsList': tips,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(18.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ────────────────────────────────────────────
-            _staggered(
-              0,
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.spa_rounded, color: AppColors.sand, size: 28),
-                    const SizedBox(width: 6),
-                    const Text(
-                      "Sustainable Lifestyle",
-                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _loadDashboardData(),
+        builder: (context, snapshot) {
+          // Default data loading ya empty state k liye
+          double carbonFootprint = 0.0;
+          int completedTasks = 0;
+          List<Map<String, dynamic>> tipsList = [];
 
-            // ── Carbon Card (Static Placeholder for SQLite context) ──
-            _staggered(
-              1,
-              _HoverScale(
-                onTap: () => widget.onNavigate(1),
-                // scaleAmount: 0.98,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.10),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.16)),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          if (snapshot.hasData) {
+            carbonFootprint = snapshot.data!['carbonScore'];
+            completedTasks = snapshot.data!['completedCount'];
+            tipsList = snapshot.data!['tipsList'];
+          }
+
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(18.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ────────────────────────────────────────────
+                _staggered(
+                  0,
+                  Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.spa_rounded, color: AppColors.sand, size: 28),
+                        const SizedBox(width: 6),
+                        const Text(
+                          "Sustainable Lifestyle",
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Carbon Card (🔥 NOW DYNAMIC!) ───────────────────────
+                _staggered(
+                  1,
+                  _HoverScale(
+                    onTap: () => widget.onNavigate(1),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withOpacity(0.16)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text("Your Carbon", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                  decoration: BoxDecoration(color: AppColors.sand.withOpacity(0.22), borderRadius: BorderRadius.circular(12)),
-                                  child: const Text("0.0 kg CO2e", style: TextStyle(color: AppColors.sand, fontWeight: FontWeight.bold, fontSize: 12)),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text("Your Carbon", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(color: AppColors.sand.withOpacity(0.22), borderRadius: BorderRadius.circular(12)),
+                                      child: Text(
+                                        "${carbonFootprint.toStringAsFixed(1)} kg CO2e",
+                                        style: const TextStyle(color: AppColors.sand, fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                                const SizedBox(height: 12),
+                                Text("Lower your score by completing green tasks.", style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                                const SizedBox(height: 16),
+                                CustomPaint(size: const Size(double.infinity, 60), painter: SplineGraphPainter(color: AppColors.sand)),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            Text("Lower your score by completing green tasks.", style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
-                            const SizedBox(height: 16),
-                            CustomPaint(size: const Size(double.infinity, 60), painter: SplineGraphPainter(color: AppColors.sand)),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // ── Activities ──
-            _staggered(2, const Text("Your Activities", style: TextStyle(fontSize: 18.5, fontWeight: FontWeight.bold, color: Colors.white))),
-            const SizedBox(height: 12),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 1.25,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              children: [
-                _staggered(3, _buildActivityCard("Green Tasks", "0 completed", Icons.emoji_events_rounded, const Color(0xFF8BC98E), () => widget.onNavigate(2))),
-                _staggered(4, _buildActivityCard("Community", "join top forums", Icons.groups_rounded, const Color(0xFF7FCDCD), () => widget.onNavigate(3))),
-                _staggered(5, _buildActivityCard("Green Travel", "calculate tips", Icons.electric_car_rounded, const Color(0xFFAED581), () => widget.onNavigate(8))),
-                _staggered(6, _buildActivityCard("Alternatives", "eco alternatives", Icons.shopping_bag_outlined, AppColors.sand, () => widget.onNavigate(4))),
-              ],
-            ),
-            const SizedBox(height: 24),
+                // ── Activities ────────────────────────────────────────
+                _staggered(2, const Text("Your Activities", style: TextStyle(fontSize: 18.5, fontWeight: FontWeight.bold, color: Colors.white))),
+                const SizedBox(height: 12),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  childAspectRatio: 1.25,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  children: [
+                    // 🔥 Green Tasks ka sub-title ab dynamic table count show karega
+                    _staggered(3, _buildActivityCard("Green Tasks", "$completedTasks completed", Icons.emoji_events_rounded, const Color(0xFF8BC98E), () => widget.onNavigate(2))),
+                    _staggered(4, _buildActivityCard("Community", "join top forums", Icons.groups_rounded, const Color(0xFF7FCDCD), () => widget.onNavigate(3))),
+                    _staggered(5, _buildActivityCard("Green Travel", "calculate tips", Icons.electric_car_rounded, const Color(0xFFAED581), () => widget.onNavigate(8))),
+                    _staggered(6, _buildActivityCard("Alternatives", "eco alternatives", Icons.shopping_bag_outlined, AppColors.sand, () => widget.onNavigate(4))),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
-            // ── 📊 DYNAMIC SQLITE CAROUSEL SLIDER ──────────────────────
-            _staggered(
-              7,
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: DatabaseHelper.instance.fetchTips(), // SQLite se data fetch kar raha hai
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    // Agar database khali ho toh placeholder dikhayein
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
-                      ),
-                      child: const Center(
-                        child: Text("No eco tips added yet! Add from Admin Panel.", style: TextStyle(color: Colors.white70, fontSize: 13)),
-                      ),
-                    );
-                  }
-
-                  final tipsList = snapshot.data!;
-
-                  return CarouselSlider(
+                // ── 📊 DYNAMIC SQLITE CAROUSEL SLIDER ──────────────────────
+                _staggered(
+                  7,
+                  tipsList.isEmpty
+                      ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Center(
+                      child: Text("No eco tips added yet! Add from Admin Panel.", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    ),
+                  )
+                      : CarouselSlider(
                     options: CarouselOptions(
                       height: 110,
                       autoPlay: true,
@@ -218,13 +247,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         },
                       );
                     }).toList(),
-                  );
-                },
-              ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -266,6 +295,7 @@ class _HoverScale extends StatefulWidget {
   @override
   State<_HoverScale> createState() => _HoverScaleState();
 }
+
 class _HoverScaleState extends State<_HoverScale> {
   double _scale = 1.0;
   @override

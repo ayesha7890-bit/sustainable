@@ -19,6 +19,9 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
   List<Map<String, dynamic>> _challenges = [];
   late final AnimationController _entranceController;
 
+  // Track karney ke liye ke hum naya add kar rahe hain ya edit
+  int? _editingChallengeId;
+
   static const Color forest = Color(0xFF2F4A3E);
   static const Color sage = Color(0xFF5E8570);
   static const Color sand = Color(0xFFCBBE9C);
@@ -66,29 +69,48 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
     );
   }
 
+  // Combined Add aur Edit Logic
   void _saveChallenge() async {
-    await DatabaseHelper.instance.insertChallenge({
-      'title': _titleController.text,
-      'description': _descController.text,
-      'duration_days': int.parse(_durationController.text),
-      'points': int.parse(_pointsController.text),
-    });
+    final challengeData = {
+      'title': _titleController.text.trim(),
+      'description': _descController.text.trim(),
+      'duration_days': int.parse(_durationController.text.trim()),
+      'points': int.parse(_pointsController.text.trim()),
+    };
 
-    _titleController.clear();
-    _descController.clear();
-    _durationController.clear();
-    _pointsController.clear();
+    String successMessage = '';
+
+    if (_editingChallengeId == null) {
+      // Create New
+      await DatabaseHelper.instance.insertChallenge(challengeData);
+      successMessage = 'New Challenge added successfully!';
+    } else {
+      // Update Existing
+      challengeData['id'] = _editingChallengeId!;
+      await DatabaseHelper.instance.updateChallenge(challengeData);
+      successMessage = 'Challenge updated successfully!';
+    }
+
+    _clearForm();
 
     if (!mounted) return;
     Navigator.pop(context);
     _loadChallenges();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('New Challenge added successfully!'),
+      SnackBar(
+        content: Text(successMessage),
         backgroundColor: sage,
       ),
     );
+  }
+
+  void _clearForm() {
+    _titleController.clear();
+    _descController.clear();
+    _durationController.clear();
+    _pointsController.clear();
+    _editingChallengeId = null;
   }
 
   void _deleteChallenge(int id) async {
@@ -96,7 +118,18 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
     _loadChallenges();
   }
 
-  void _showAddDialog() {
+  // Edit Mode On karke dialog kholne ka method
+  void _editChallenge(Map<String, dynamic> item) {
+    _editingChallengeId = item['id'];
+    _titleController.text = item['title'].toString();
+    _descController.text = item['description'].toString();
+    _durationController.text = item['duration_days'].toString();
+    _pointsController.text = item['points'].toString();
+
+    _showChallengeDialog();
+  }
+
+  void _showChallengeDialog() {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -121,13 +154,13 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
                       borderRadius: BorderRadius.circular(28),
                       side: BorderSide(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
                     ),
-                    title: const Row(
+                    title: Row(
                       children: [
-                        Icon(Icons.emoji_events_rounded, color: sand, size: 22),
-                        SizedBox(width: 10),
+                        const Icon(Icons.emoji_events_rounded, color: sand, size: 22),
+                        const SizedBox(width: 10),
                         Text(
-                          'Create Eco-Challenge',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                          _editingChallengeId == null ? 'Create Eco-Challenge' : 'Edit Eco-Challenge',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                       ],
                     ),
@@ -177,7 +210,10 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
                     actionsPadding: const EdgeInsets.fromLTRB(0, 0, 16, 12),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          _clearForm();
+                          Navigator.pop(context);
+                        },
                         child: const Text('Cancel', style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold)),
                       ),
                       Material(
@@ -192,14 +228,21 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
                               _saveChallenge();
                             }
                           },
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Launch Challenge', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                SizedBox(width: 6),
-                                Icon(Icons.rocket_launch_rounded, size: 16, color: Colors.white),
+                                Text(
+                                    _editingChallengeId == null ? 'Launch Challenge' : 'Update Challenge',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                                ),
+                                const SizedBox(width: 6),
+                                Icon(
+                                    _editingChallengeId == null ? Icons.rocket_launch_rounded : Icons.check_circle_rounded,
+                                    size: 16,
+                                    color: Colors.white
+                                ),
                               ],
                             ),
                           ),
@@ -229,7 +272,7 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
       style: const TextStyle(color: Colors.white, fontSize: 14),
       validator: (v) {
         if (v == null || v.trim().isEmpty) return 'This field is required';
-        if (isNumber && int.tryParse(v) == null) return 'Only numbers are allowed';
+        if (isNumber && int.tryParse(v.trim()) == null) return 'Only numbers are allowed';
         return null;
       },
       decoration: InputDecoration(
@@ -292,57 +335,60 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
                     final item = _challenges[index];
                     return _staggered(
                       index,
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: glassBg.withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
+                      GestureDetector(
+                        onTap: () => _editChallenge(item), // Card click karne par edit trigger hoga
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: glassBg.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(Icons.workspace_premium_rounded, color: sand, size: 24),
                               ),
-                              child: const Icon(Icons.workspace_premium_rounded, color: sand, size: 24),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(color: sage.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(6)),
-                                        child: Text('${item['duration_days']} Days', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
-                                        child: Text('+${item['points']} Pts', style: const TextStyle(color: sand, fontSize: 10, fontWeight: FontWeight.bold)),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(item['title'], style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 4),
-                                  Text(item['description'], maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
-                                ],
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(color: sage.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(6)),
+                                          child: Text('${item['duration_days']} Days', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
+                                          child: Text('+${item['points']} Pts', style: const TextStyle(color: sand, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(item['title'], style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    Text(item['description'], maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+                                  ],
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF8A80)),
-                              onPressed: () => _deleteChallenge(item['id']),
-                            ),
-                          ],
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF8A80)),
+                                onPressed: () => _deleteChallenge(item['id']),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -354,7 +400,10 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDialog,
+        onPressed: () {
+          _clearForm(); // Pehle se clean form ensure karne ke liye
+          _showChallengeDialog();
+        },
         backgroundColor: sage,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add_rounded, color: Colors.white),

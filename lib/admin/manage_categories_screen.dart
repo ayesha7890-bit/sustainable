@@ -7,12 +7,10 @@ class ManageCategoriesScreen extends StatefulWidget {
   const ManageCategoriesScreen({super.key});
 
   @override
-  State<ManageCategoriesScreen> createState() =>
-      _ManageCategoriesScreenState();
+  State<ManageCategoriesScreen> createState() => _ManageCategoriesScreenState();
 }
 
-class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
-    with TickerProviderStateMixin {
+class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _categoryNameController = TextEditingController();
   final _searchController = TextEditingController();
@@ -29,7 +27,6 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   late AnimationController _fabController;
   late Animation<double> _fabScale;
 
-  // ── Aapki Real Identity Theme ───────────────────────────────────
   static const Color _forest = AppColors.forest;
   static const Color _sage = AppColors.sage;
   static const Color _sand = AppColors.sand;
@@ -83,8 +80,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     });
   }
 
-  List<Map<String, dynamic>> _applySearch(
-      List<Map<String, dynamic>> source, String query) {
+  List<Map<String, dynamic>> _applySearch(List<Map<String, dynamic>> source, String query) {
     if (query.trim().isEmpty) return List.from(source);
     return source
         .where((c) => c['name']
@@ -117,7 +113,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
 
       if (dialogContext.mounted) Navigator.pop(dialogContext);
       await _refreshCategories();
-      _showSnack(wasEditing ? 'Category updated!' : 'Category added!');
+      _showSnack(wasEditing ? 'Category updated! ✏️' : 'Category added! ✅');
     } catch (e) {
       debugPrint('Save category error: $e');
       if (dialogContext.mounted) {
@@ -141,7 +137,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     _refreshCategories();
   }
 
-  Future<void> _bulkAddCategories() async {
+  Future<void> _bulkAddCategories(void Function(void Function()) setDialogState) async {
     final text = _bulkAddController.text;
     final rawNames = text
         .split(RegExp(r'[\n,]'))
@@ -155,7 +151,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       return;
     }
 
-    setState(() => _isImporting = true);
+    setDialogState(() => _isImporting = true);
     try {
       int added = 0;
       for (final name in rawNames) {
@@ -170,10 +166,10 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       await _refreshCategories();
       _bulkAddController.clear();
       if (mounted) Navigator.pop(context);
-      setState(() => _isImporting = false);
+      setDialogState(() => _isImporting = false);
       _showSnack('$added new categories added! 📥');
     } catch (e) {
-      setState(() => _isImporting = false);
+      setDialogState(() => _isImporting = false);
       _showSnack('Bulk category add fail: $e', isError: true);
     }
   }
@@ -233,8 +229,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                   onTap: _isImporting
                       ? null
                       : () async {
-                    setDialogState(() {});
-                    await _bulkAddCategories();
+                    await _bulkAddCategories(setDialogState);
                   },
                 ),
               ],
@@ -368,7 +363,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   InputDecoration _dialogFieldDecoration(String hint, {IconData? icon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white),
+      hintStyle: const TextStyle(color: Colors.white60), // ✨ FIXED: Contrast enhancement
       prefixIcon: icon != null ?  Icon(icon, color: _sand) : null,
       filled: true,
       fillColor: Colors.white.withOpacity(0.08),
@@ -411,7 +406,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                 ),
               )
             else if (icon != null)
-               Icon(icon, color: _sand, size: 16),
+              Icon(icon, color: _sand, size: 16),
             const SizedBox(width: 6),
             Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
@@ -434,7 +429,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   }
 
   // ---------------------------------------------------------------
-  // BUILD
+  // BUILD MAIN SCREEN
   // ---------------------------------------------------------------
 
   @override
@@ -519,7 +514,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
                     ),
                   ),
                   Text(
-                    'Add, edit or delete',
+                    'Add, edit or delete system categories',
                     style: TextStyle(color: Colors.white70, fontSize: 12.5),
                   ),
                 ],
@@ -570,7 +565,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
           controller: _searchController,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: 'Category dhoondhein...',
+            hintText: 'Search categories...',
             hintStyle: const TextStyle(color: Colors.white60),
             prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
             suffixIcon: _searchController.text.isNotEmpty
