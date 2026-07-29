@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 🔄 Added for Like State Persistent Management
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 🔐 Import for dynamic user unique key
 import '../database/database_helper.dart';
 
 class ForumScreen extends StatefulWidget {
@@ -15,15 +16,22 @@ class _ForumScreenState extends State<ForumScreen> {
   final TextEditingController _contentController = TextEditingController();
 
   List<Map<String, dynamic>> _posts = [];
-  Set<String> _likedPostIds = {
-
-  }; // 🛑 Track unique liked post IDs locally
+  Set<String> _likedPostIds = {}; // Track unique liked post IDs locally
   bool _isLoading = true;
 
   // Premium Green Theme Configuration
   static const Color forest = Color(0xFF1E3A2F);
   static const Color sage = Color(0xFF5E8570);
   static const Color sand = Color(0xFFF4EAE1);
+
+  // 🔑 Get Dynamic Key Based on Logged-in Firebase User
+  String get _userPrefKey {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      return 'user_liked_posts_${user.uid}'; // Dynamic key for unique user account
+    }
+    return 'user_liked_posts_guest'; // Fallback for guest users
+  }
 
   @override
   void initState() {
@@ -45,8 +53,8 @@ class _ForumScreenState extends State<ForumScreen> {
       final list = await DatabaseHelper.instance.getForumPosts();
       final prefs = await SharedPreferences.getInstance();
 
-      // Fetch list of IDs user has already liked
-      final likedList = prefs.getStringList('user_liked_posts') ?? [];
+      // Fetch list using the dynamic user-specific key
+      final likedList = prefs.getStringList(_userPrefKey) ?? [];
 
       setState(() {
         _posts = list;
@@ -97,7 +105,7 @@ class _ForumScreenState extends State<ForumScreen> {
     }
   }
 
-  // 🔥 Professional Toggle Like Feature (Ek user sirf ek hi like de sakega)
+  // 🔥 Professional Toggle Like Feature (Dynamic per user account)
   Future<void> _toggleLikePost(int id, int currentLikes) async {
     final prefs = await SharedPreferences.getInstance();
     final String stringId = id.toString();
@@ -114,12 +122,11 @@ class _ForumScreenState extends State<ForumScreen> {
       _likedPostIds.add(stringId);
     }
 
-    // Database mein update bhejein (Aapke parameter order ke mutabik check kar lein)
-    // Agar query direct counter assign karti hai to newLikesCount bhejein, warna increment handles update.
+    // Database mein update bhejein
     await DatabaseHelper.instance.likeForumPost(id, newLikesCount);
 
-    // Local device state save karein
-    await prefs.setStringList('user_liked_posts', _likedPostIds.toList());
+    // Dynamic key par states save karein, taaki dosre accounts mix up na hon
+    await prefs.setStringList(_userPrefKey, _likedPostIds.toList());
 
     // UI reload karein seamlessly
     _loadPostsAndLikes();
@@ -240,10 +247,10 @@ class _ForumScreenState extends State<ForumScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-           title: const Text(
-             "Community Forum",
+          title: const Text(
+            "Community Forum",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-           ),
+          ),
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.white))
@@ -333,7 +340,6 @@ class _ForumScreenState extends State<ForumScreen> {
                           duration: const Duration(milliseconds: 250),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            // ❤️ Liked color transitions smoothly
                             color: isLikedByMe ? Colors.red.withOpacity(0.15) : sage.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(30),
                           ),

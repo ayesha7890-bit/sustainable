@@ -177,78 +177,78 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 const SizedBox(height: 24),
 
                 // ── 📊 DYNAMIC SQLITE CAROUSEL SLIDER ──────────────────────
-                _staggered(
-                  7,
-                  tipsList.isEmpty
-                      ? Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: const Center(
-                      child: Text("No eco tips added yet! Add from Admin Panel.", style: TextStyle(color: Colors.white70, fontSize: 13)),
-                    ),
-                  )
-                      : CarouselSlider(
-                    options: CarouselOptions(
-                      height: 110,
-                      autoPlay: true,
-                      autoPlayInterval: const Duration(seconds: 4),
-                      enlargeCenterPage: true,
-                      viewportFraction: 1.0,
-                    ),
-                    items: tipsList.map((tip) {
-                      final String title = tip['title'] ?? 'Eco Tip';
-                      final String desc = tip['description'] ?? '';
-
-                      return Builder(
-                        builder: (BuildContext context) {
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                              child: Container(
-                                width: MediaQuery.of(context).size.width,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.10),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.white.withOpacity(0.16)),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(color: AppColors.sand.withOpacity(0.22), shape: BoxShape.circle),
-                                        child: const Icon(Icons.tips_and_updates_rounded, color: AppColors.sand),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                            const SizedBox(height: 4),
-                                            Text(desc, style: TextStyle(fontSize: 12.5, color: Colors.white.withOpacity(0.72), height: 1.35), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ),
+                // _staggered(
+                //   7,
+                //   tipsList.isEmpty
+                //       ? Container(
+                //     width: double.infinity,
+                //     padding: const EdgeInsets.all(20),
+                //     decoration: BoxDecoration(
+                //       color: Colors.white.withOpacity(0.05),
+                //       borderRadius: BorderRadius.circular(20),
+                //       border: Border.all(color: Colors.white.withOpacity(0.1)),
+                //     ),
+                //     child: const Center(
+                //       child: Text("No eco tips added yet! Add from Admin Panel.", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                //     ),
+                //   )
+                //       : CarouselSlider(
+                //     options: CarouselOptions(
+                //       height: 110,
+                //       autoPlay: true,
+                //       autoPlayInterval: const Duration(seconds: 4),
+                //       enlargeCenterPage: true,
+                //       viewportFraction: 1.0,
+                //     ),
+                //     items: tipsList.map((tip) {
+                //       final String title = tip['title'] ?? 'Eco Tip';
+                //       final String desc = tip['description'] ?? '';
+                //
+                //       return Builder(
+                //         builder: (BuildContext context) {
+                //           return ClipRRect(
+                //             borderRadius: BorderRadius.circular(20),
+                //             child: BackdropFilter(
+                //               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                //               child: Container(
+                //                 width: MediaQuery.of(context).size.width,
+                //                 decoration: BoxDecoration(
+                //                   color: Colors.white.withOpacity(0.10),
+                //                   borderRadius: BorderRadius.circular(20),
+                //                   border: Border.all(color: Colors.white.withOpacity(0.16)),
+                //                 ),
+                //                 child: Padding(
+                //                   padding: const EdgeInsets.all(16.0),
+                //                   child: Row(
+                //                     children: [
+                //                       Container(
+                //                         padding: const EdgeInsets.all(10),
+                //                         decoration: BoxDecoration(color: AppColors.sand.withOpacity(0.22), shape: BoxShape.circle),
+                //                         child: const Icon(Icons.tips_and_updates_rounded, color: AppColors.sand),
+                //                       ),
+                //                       const SizedBox(width: 14),
+                //                       Expanded(
+                //                         child: Column(
+                //                           crossAxisAlignment: CrossAxisAlignment.start,
+                //                           mainAxisAlignment: MainAxisAlignment.center,
+                //                           children: [
+                //                             Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                //                             const SizedBox(height: 4),
+                //                             Text(desc, style: TextStyle(fontSize: 12.5, color: Colors.white.withOpacity(0.72), height: 1.35), maxLines: 2, overflow: TextOverflow.ellipsis),
+                //                           ],
+                //                         ),
+                //                       ),
+                //                     ],
+                //                   ),
+                //                 ),
+                //               ),
+                //             ),
+                //           );
+                //         },
+                //       );
+                //     }).toList(),
+                //   ),
+                // ),
                 const SizedBox(height: 20),
               ],
             ),

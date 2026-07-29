@@ -134,7 +134,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
     }
   }
 
-  // 🔥 FIXED: Is function ke save flow aur state variables ki hierarchy ko sahi kiya hai
   Future<void> _saveProduct(BuildContext dialogContext, void Function(void Function()) setDialogState) async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategory == null) {
@@ -142,7 +141,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
       return;
     }
 
-    // Modal Sheet aur Main page dono ke loading spinners ko true karein
     setDialogState(() => _isSaving = true);
     setState(() => _isSaving = true);
 
@@ -166,7 +164,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
         await DatabaseHelper.instance.updateProduct(_editingId!, data);
       }
 
-      // Pehle loading bands karein taake pop safe ho ske
       setDialogState(() => _isSaving = false);
       if (mounted) setState(() => _isSaving = false);
 
@@ -745,17 +742,21 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
           return ChoiceChip(
             label: Text(name),
             selected: selected,
-            selectedColor: Colors.white,
-            backgroundColor: Colors.white.withOpacity(0.14),
+            selectedColor: _sand,
+            backgroundColor: Colors.white.withOpacity(0.12),
             checkmarkColor: _forest,
+            showCheckmark: selected,
             labelStyle: TextStyle(
-              color: selected ? _forest : Colors.white,
-              fontWeight: FontWeight.w600,
+              color: selected ? _forest : Colors.black12.withOpacity(0.9),
+              fontWeight: FontWeight.bold,
               fontSize: 13,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: selected ? Colors.transparent : Colors.white.withOpacity(0.15)),
+              side: BorderSide(
+                color: selected ? _sand : Colors.white.withOpacity(0.15),
+                width: 1,
+              ),
             ),
             onSelected: (_) {
               setState(() => _categoryFilter = name);
@@ -824,22 +825,19 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
         child: InkWell(
           onTap: () => _showProductDialog(product: product),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                flex: 11,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Hero(
-                      tag: 'product_${product['id']}',
-                      child: hasImage
-                          ? Image.file(File(imagePath), fit: BoxFit.cover)
-                          : Container(
-                        color: _sage.withOpacity(0.2),
-                        child: const Icon(Icons.shopping_bag_outlined, color: Colors.white54, size: 40),
+                    if (hasImage)
+                      Image.file(File(imagePath), fit: BoxFit.cover)
+                    else
+                      Container(
+                        color: Colors.white.withOpacity(0.08),
+                        child: const Icon(Icons.shopping_bag_outlined, color: Colors.white38, size: 40),
                       ),
-                    ),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -868,39 +866,50 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
                   ],
                 ),
               ),
-              Expanded(
-                flex: 6,
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        product['name'] ?? '',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        product['category'] ?? '',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '\$${product['price']?.toString() ?? '0.0'}',
-                            style: const TextStyle(color: _sand, fontWeight: FontWeight.bold, fontSize: 13),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product['name'] ?? 'No Name',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      product['category'] ?? 'General',
+                      style: TextStyle(color: _sand.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '\$${product['price'] ?? '0.0'}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          Text(
-                            '${product['carbon_saved']?.toString() ?? '0'} kg',
-                            style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.co2_rounded, color: _sand, size: 14),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${product['carbon_saved'] ?? '0'}kg',
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -915,11 +924,23 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 48, color: Colors.white.withOpacity(0.4)),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.inventory_2_outlined, color: Colors.white38, size: 40),
+          ),
           const SizedBox(height: 12),
-          Text(
+          const Text(
             'No products found',
-            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 15, fontWeight: FontWeight.w600),
+            style: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Try changing filters or add a new entry',
+            style: TextStyle(color: Colors.white38, fontSize: 12),
           ),
         ],
       ),
