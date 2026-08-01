@@ -50,19 +50,40 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<Map<String, dynamic>> _loadDashboardData() async {
     final carbonLogs = await DatabaseHelper.instance.getCarbonLogs();
     final completedChallenges = await DatabaseHelper.instance.fetchCompletedChallenges();
-    final tips = await DatabaseHelper.instance.fetchTips();
+
+    // Custom logic: Yahan fetchTravelTips database helper se fetch karein
+    final tips = await DatabaseHelper.instance.fetchTravelTips();
 
     double totalCarbon = 0.0;
     if (carbonLogs.isNotEmpty) {
-      // Latet log entry se total_co2 nikalna
       totalCarbon = (carbonLogs.first['total_co2'] ?? 0.0).toDouble();
     }
+
+    // Sirf Travel aur Energy wali tips filter karna
+    final travelEnergyTips = tips.where((tip) {
+      final cat = tip['category']?.toString().toLowerCase() ?? '';
+      return cat == 'travel' || cat == 'energy';
+    }).toList();
 
     return {
       'carbonScore': totalCarbon,
       'completedCount': completedChallenges.length,
-      'tipsList': tips,
+      'tipsList': travelEnergyTips.isEmpty ? tips : travelEnergyTips, // Fallback agar filtered na milein
     };
+  }
+
+  IconData _getTipIcon(String? cat) {
+    final category = cat?.toLowerCase() ?? '';
+    if (category == 'travel') return Icons.commute_rounded;
+    if (category == 'energy') return Icons.bolt_rounded;
+    return Icons.tips_and_updates_rounded;
+  }
+
+  Color _getTipColor(String? cat) {
+    final category = cat?.toLowerCase() ?? '';
+    if (category == 'travel') return Colors.cyanAccent;
+    if (category == 'energy') return Colors.amberAccent;
+    return AppColors.sand;
   }
 
   @override
@@ -72,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: FutureBuilder<Map<String, dynamic>>(
         future: _loadDashboardData(),
         builder: (context, snapshot) {
-          // Default data loading ya empty state k liye
           double carbonFootprint = 0.0;
           int completedTasks = 0;
           List<Map<String, dynamic>> tipsList = [];
@@ -108,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 24),
 
-                // ── Carbon Card (🔥 NOW DYNAMIC!) ───────────────────────
+                // ── Carbon Card ───────────────────────
                 _staggered(
                   1,
                   _HoverScale(
@@ -167,89 +187,114 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
                   children: [
-                    // 🔥 Green Tasks ka sub-title ab dynamic table count show karega
                     _staggered(3, _buildActivityCard("Green Tasks", "$completedTasks completed", Icons.emoji_events_rounded, const Color(0xFF8BC98E), () => widget.onNavigate(2))),
                     _staggered(4, _buildActivityCard("Community", "join top forums", Icons.groups_rounded, const Color(0xFF7FCDCD), () => widget.onNavigate(3))),
                     _staggered(5, _buildActivityCard("Green Travel", "calculate tips", Icons.electric_car_rounded, const Color(0xFFAED581), () => widget.onNavigate(8))),
                     _staggered(6, _buildActivityCard("Alternatives", "eco alternatives", Icons.shopping_bag_outlined, AppColors.sand, () => widget.onNavigate(4))),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // ── 📊 DYNAMIC SQLITE CAROUSEL SLIDER ──────────────────────
-                // _staggered(
-                //   7,
-                //   tipsList.isEmpty
-                //       ? Container(
-                //     width: double.infinity,
-                //     padding: const EdgeInsets.all(20),
-                //     decoration: BoxDecoration(
-                //       color: Colors.white.withOpacity(0.05),
-                //       borderRadius: BorderRadius.circular(20),
-                //       border: Border.all(color: Colors.white.withOpacity(0.1)),
-                //     ),
-                //     child: const Center(
-                //       child: Text("No eco tips added yet! Add from Admin Panel.", style: TextStyle(color: Colors.white70, fontSize: 13)),
-                //     ),
-                //   )
-                //       : CarouselSlider(
-                //     options: CarouselOptions(
-                //       height: 110,
-                //       autoPlay: true,
-                //       autoPlayInterval: const Duration(seconds: 4),
-                //       enlargeCenterPage: true,
-                //       viewportFraction: 1.0,
-                //     ),
-                //     items: tipsList.map((tip) {
-                //       final String title = tip['title'] ?? 'Eco Tip';
-                //       final String desc = tip['description'] ?? '';
-                //
-                //       return Builder(
-                //         builder: (BuildContext context) {
-                //           return ClipRRect(
-                //             borderRadius: BorderRadius.circular(20),
-                //             child: BackdropFilter(
-                //               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                //               child: Container(
-                //                 width: MediaQuery.of(context).size.width,
-                //                 decoration: BoxDecoration(
-                //                   color: Colors.white.withOpacity(0.10),
-                //                   borderRadius: BorderRadius.circular(20),
-                //                   border: Border.all(color: Colors.white.withOpacity(0.16)),
-                //                 ),
-                //                 child: Padding(
-                //                   padding: const EdgeInsets.all(16.0),
-                //                   child: Row(
-                //                     children: [
-                //                       Container(
-                //                         padding: const EdgeInsets.all(10),
-                //                         decoration: BoxDecoration(color: AppColors.sand.withOpacity(0.22), shape: BoxShape.circle),
-                //                         child: const Icon(Icons.tips_and_updates_rounded, color: AppColors.sand),
-                //                       ),
-                //                       const SizedBox(width: 14),
-                //                       Expanded(
-                //                         child: Column(
-                //                           crossAxisAlignment: CrossAxisAlignment.start,
-                //                           mainAxisAlignment: MainAxisAlignment.center,
-                //                           children: [
-                //                             Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
-                //                             const SizedBox(height: 4),
-                //                             Text(desc, style: TextStyle(fontSize: 12.5, color: Colors.white.withOpacity(0.72), height: 1.35), maxLines: 2, overflow: TextOverflow.ellipsis),
-                //                           ],
-                //                         ),
-                //                       ),
-                //                     ],
-                //                   ),
-                //                 ),
-                //               ),
-                //             ),
-                //           );
-                //         },
-                //       );
-                //     }).toList(),
-                //   ),
-                // ),
-                const SizedBox(height: 20),
+                // ── 📊 UNCOMMENTED DYNAMIC SQLITE CAROUSEL SLIDER ──────────────────────
+                _staggered(
+                  7,
+                  tipsList.isEmpty
+                      ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Center(
+                      child: Text("No eco tips available for Travel or Energy!", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    ),
+                  )
+                      : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4.0, bottom: 12.0),
+                        child: Text(
+                          "💡 Featured Guidelines",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                      CarouselSlider(
+                        options: CarouselOptions(
+                          height: 115,
+                          autoPlay: true,
+                          autoPlayInterval: const Duration(seconds: 4),
+                          enlargeCenterPage: true,
+                          viewportFraction: 1.0,
+                        ),
+                        items: tipsList.map((tip) {
+                          final String title = tip['title'] ?? 'Eco Tip';
+                          final String desc = tip['description'] ?? '';
+                          final String? cat = tip['category'];
+
+                          return Builder(
+                            builder: (BuildContext context) {
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                                  child: Container(
+                                    width: MediaQuery.of(context).size.width,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.10),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.white.withOpacity(0.16)),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                                color: _getTipColor(cat).withOpacity(0.2),
+                                                shape: BoxShape.circle
+                                            ),
+                                            child: Icon(_getTipIcon(cat), color: _getTipColor(cat)),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                    title,
+                                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                    desc,
+                                                    style: TextStyle(fontSize: 12.5, color: Colors.white.withOpacity(0.72), height: 1.35),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
           );
