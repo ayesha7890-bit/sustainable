@@ -1,3 +1,4 @@
+import '../services/notification_service.dart';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 
@@ -75,16 +76,50 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
     });
   }
 
+  // Future<void> _completeChallenge(Challenge challenge) async {
+  //   final todayStr = DateTime.now().toIso8601String().split('T')[0];
+  //
+  //   final result = await DatabaseHelper.instance.completeChallenge(challenge.id, todayStr);
+  //   if (result > 0) {
+  //     _showCelebrationDialog(challenge);
+  //     _loadChallengesAndCompletions();
+  //   }
+  // }
+  // Future<void> _completeChallenge(Challenge challenge) async {
+  //   final todayStr = DateTime.now().toIso8601String().split('T')[0];
+  //
+  //   final result = await DatabaseHelper.instance.completeChallenge(challenge.id, todayStr);
+  //   if (result > 0) {
+  //     // 🔔 INSTANT NOTIFICATION: Challenge complete hone par trigger
+  //     NotificationService().showNotification(
+  //       title: "🏆 Challenge Completed!",
+  //       body: "Aapne '${challenge.title}' poora kar liya hai aur +${challenge.points} Eco Points jeete hain!",
+  //     );
+  //
+  //     _showCelebrationDialog(challenge);
+  //     _loadChallengesAndCompletions();
+  //   }
+  // }
   Future<void> _completeChallenge(Challenge challenge) async {
     final todayStr = DateTime.now().toIso8601String().split('T')[0];
 
     final result = await DatabaseHelper.instance.completeChallenge(challenge.id, todayStr);
     if (result > 0) {
+      // 🔔 INSTANT NOTIFICATION: Challenge complete hone par trigger
+      try {
+        await NotificationService().showNotification(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: "🏆 Challenge Completed!",
+          body: "Aapne '${challenge.title}' poora kar liya hai aur +${challenge.points} Eco Points jeete hain!",
+        );
+      } catch (e) {
+        debugPrint("Notification Error: $e");
+      }
+
       _showCelebrationDialog(challenge);
       _loadChallengesAndCompletions();
     }
   }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sustainable/database/database_helper.dart';
+import 'package:sustainable/services/notification_service.dart'; // 🔥 Notification service import ki gayi hai
 
 class ManageChallengesScreen extends StatefulWidget {
   const ManageChallengesScreen({super.key});
@@ -71,21 +72,37 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
 
   // Combined Add aur Edit Logic
   void _saveChallenge() async {
+    final title = _titleController.text.trim();
+    final description = _descController.text.trim();
+    final duration = int.parse(_durationController.text.trim());
+    final points = int.parse(_pointsController.text.trim());
+
     final challengeData = {
-      'title': _titleController.text.trim(),
-      'description': _descController.text.trim(),
-      'duration_days': int.parse(_durationController.text.trim()),
-      'points': int.parse(_pointsController.text.trim()),
+      'title': title,
+      'description': description,
+      'duration_days': duration,
+      'points': points,
     };
 
     String successMessage = '';
 
     if (_editingChallengeId == null) {
-      // Create New
+      // 1. Database mein Save Karein
       await DatabaseHelper.instance.insertChallenge(challengeData);
       successMessage = 'New Challenge added successfully!';
+
+      // 🔥 2. Naya Challenge launch hone par Notification Send Karein
+      try {
+        await NotificationService().showNotification(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: '🚀 New Eco-Challenge: $title',
+          body: 'Earn $points pts in $duration days! $description',
+        );
+      } catch (e) {
+        debugPrint("Notification Error: $e");
+      }
     } else {
-      // Update Existing
+      // Update Existing Challenge (Is par notification nahi jayegi)
       challengeData['id'] = _editingChallengeId!;
       await DatabaseHelper.instance.updateChallenge(challengeData);
       successMessage = 'Challenge updated successfully!';
@@ -336,7 +353,7 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
                     return _staggered(
                       index,
                       GestureDetector(
-                        onTap: () => _editChallenge(item), // Card click karne par edit trigger hoga
+                        onTap: () => _editChallenge(item),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(14),
@@ -401,7 +418,7 @@ class _ManageChallengesScreenState extends State<ManageChallengesScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          _clearForm(); // Pehle se clean form ensure karne ke liye
+          _clearForm();
           _showChallengeDialog();
         },
         backgroundColor: sage,

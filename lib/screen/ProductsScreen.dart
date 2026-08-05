@@ -66,10 +66,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
     _loadProducts();
   }
 
+  // 🔥 UPDATED: Database se Admin categories aur Products dono fetch karta hai
   Future<void> _loadProducts() async {
+    // 1. Products fetch karein
     final list = await DatabaseHelper.instance.fetchProducts();
     final fetchedProducts = list.map((m) => Product.fromMap(m)).toList();
-    final uniqueCategories = {"All", ...fetchedProducts.map((p) => p.category)};
+
+    // 2. Admin Panel se dali hui Admin Categories DB se fetch karein
+    final categoryMaps = await DatabaseHelper.instance.fetchCategories();
+    final dbCategories = categoryMaps.map((c) => c['name'].toString()).toList();
+
+    // 3. Sab categories ko combine karein aur duplicate hataein
+    final Set<String> uniqueCategories = {
+      "All",
+      ...dbCategories,
+      ...fetchedProducts.map((p) => p.category),
+    };
 
     setState(() {
       _allProducts = fetchedProducts;
@@ -203,7 +215,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
               ),
 
-              // 🔥 Preference Indicator Title Added (Satisfies Documentation Requirement)
+              // Preference Indicator Title
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                 child: Row(
@@ -223,7 +235,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
               ),
 
-              // Scrollable Dynamic Category Chips
+              // Scrollable Dynamic Category Chips (Admin + Product Categories)
               SizedBox(
                 height: 48,
                 child: ListView.builder(

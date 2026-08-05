@@ -1,14 +1,19 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:sustainable/firebase_options.dart';
+import 'package:sustainable/services/notification_service.dart'; // Notification Service Import Karein
 import 'splash.dart';
 
-Future<void> main() async{
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Firebase Initialize
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // 🔔 Local Notification Service Initialize
+  await NotificationService().initNotification();
 
   runApp(const MyApp());
 }

@@ -1,3 +1,4 @@
+import '../services/notification_service.dart';
 import 'dart:io';
 import 'dart:ui';
 
@@ -134,6 +135,59 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
     }
   }
 
+  // Future<void> _saveProduct(BuildContext dialogContext, void Function(void Function()) setDialogState) async {
+  //   if (!_formKey.currentState!.validate()) return;
+  //   if (_selectedCategory == null) {
+  //     _showSnack('Kindly Select Category!', isError: true);
+  //     return;
+  //   }
+  //
+  //   setDialogState(() => _isSaving = true);
+  //   setState(() => _isSaving = true);
+  //
+  //   final wasEditing = _editingId != null;
+  //
+  //   final data = {
+  //     'name': _nameController.text.trim(),
+  //     'category': _selectedCategory,
+  //     'description': _descController.text.trim(),
+  //     'image_url': _selectedImagePath ?? '',
+  //     'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+  //     'carbon_saved': double.tryParse(_carbonController.text.trim()) ?? 25.0,
+  //     'icon_name': _selectedCategory?.toLowerCase() == 'bathroom' ? 'brush' : 'shopping_bag',
+  //     'benefits_csv': _benefitsController.text.isNotEmpty ? _benefitsController.text.trim() : 'Eco Friendly',
+  //   };
+  //
+  //   try {
+  //     if (!wasEditing) {
+  //       await DatabaseHelper.instance.insertProduct(data);
+  //     } else {
+  //       await DatabaseHelper.instance.updateProduct(_editingId!, data);
+  //     }
+  //
+  //     setDialogState(() => _isSaving = false);
+  //     if (mounted) setState(() => _isSaving = false);
+  //
+  //     _resetForm();
+  //     if (dialogContext.mounted) Navigator.pop(dialogContext);
+  //
+  //     await _loadData(showLoader: false);
+  //     _showSnack(wasEditing ? 'Product updated! ✏️' : 'Product saved successfully! ✅');
+  //   } catch (e) {
+  //     setDialogState(() => _isSaving = false);
+  //     if (mounted) setState(() => _isSaving = false);
+  //
+  //     if (dialogContext.mounted) {
+  //       ScaffoldMessenger.of(dialogContext).showSnackBar(
+  //         SnackBar(
+  //           content: Text('Error: $e'),
+  //           backgroundColor: Colors.redAccent,
+  //           behavior: SnackBarBehavior.floating,
+  //         ),
+  //       );
+  //     }
+  //   }
+  // }
   Future<void> _saveProduct(BuildContext dialogContext, void Function(void Function()) setDialogState) async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategory == null) {
@@ -145,9 +199,10 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
     setState(() => _isSaving = true);
 
     final wasEditing = _editingId != null;
+    final productName = _nameController.text.trim();
 
     final data = {
-      'name': _nameController.text.trim(),
+      'name': productName,
       'category': _selectedCategory,
       'description': _descController.text.trim(),
       'image_url': _selectedImagePath ?? '',
@@ -171,6 +226,20 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
       if (dialogContext.mounted) Navigator.pop(dialogContext);
 
       await _loadData(showLoader: false);
+
+      // 🔔 NOTIFICATION TRIGGER: Sirf NAYA product add hone par chalega
+      if (!wasEditing) {
+        try {
+          await NotificationService().showNotification(
+            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            title: "🛍️ New Product Added!",
+            body: "Admin has added a new eco-product: '$productName'",
+          );
+        } catch (e) {
+          debugPrint("Notification Error: $e");
+        }
+      }
+
       _showSnack(wasEditing ? 'Product updated! ✏️' : 'Product saved successfully! ✅');
     } catch (e) {
       setDialogState(() => _isSaving = false);
@@ -187,7 +256,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> with Ticker
       }
     }
   }
-
   Future<void> _deleteProduct(Map<String, dynamic> product) async {
     final confirm = await showDialog<bool>(
       context: context,
